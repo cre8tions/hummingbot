@@ -57,6 +57,7 @@ class XeggexExchange(ExchangeBase):
     XeggexExchange connects with Xeggex exchange and provides order book pricing, user account tracking and
     trading functionality.
     """
+
     ORDER_NOT_EXIST_CONFIRMATION_COUNT = 3
     ORDER_NOT_EXIST_CANCEL_COUNT = 2
 
@@ -67,13 +68,14 @@ class XeggexExchange(ExchangeBase):
             ctce_logger = logging.getLogger(__name__)
         return ctce_logger
 
-    def __init__(self,
-                 client_config_map: "ClientConfigAdapter",
-                 xeggex_api_key: str,
-                 xeggex_secret_key: str,
-                 trading_pairs: Optional[List[str]] = None,
-                 trading_required: bool = True
-                 ):
+    def __init__(
+        self,
+        client_config_map: "ClientConfigAdapter",
+        xeggex_api_key: str,
+        xeggex_secret_key: str,
+        trading_pairs: Optional[List[str]] = None,
+        trading_required: bool = True,
+    ):
         """
         :param xeggex_api_key: The API key to connect to private Xeggex APIs.
         :param xeggex_secret_key: The API secret.
@@ -124,8 +126,9 @@ class XeggexExchange(ExchangeBase):
             "order_books_initialized": self.order_book_tracker.ready,
             "account_balance": len(self._account_balances) > 0 if self._trading_required else True,
             "trading_rule_initialized": len(self._trading_rules) > 0,
-            "user_stream_initialized":
-                self._user_stream_tracker.data_source.last_recv_time > 0 if self._trading_required else True,
+            "user_stream_initialized": self._user_stream_tracker.data_source.last_recv_time > 0
+            if self._trading_required
+            else True,
         }
 
     @property
@@ -138,21 +141,14 @@ class XeggexExchange(ExchangeBase):
 
     @property
     def limit_orders(self) -> List[LimitOrder]:
-        return [
-            in_flight_order.to_limit_order()
-            for in_flight_order in self._in_flight_orders.values()
-        ]
+        return [in_flight_order.to_limit_order() for in_flight_order in self._in_flight_orders.values()]
 
     @property
     def tracking_states(self) -> Dict[str, any]:
         """
         :return active in-flight orders in json format, is used to save in sqlite db.
         """
-        return {
-            key: value.to_json()
-            for key, value in self._in_flight_orders.items()
-            if not value.is_done
-        }
+        return {key: value.to_json() for key, value in self._in_flight_orders.items() if not value.is_done}
 
     def restore_tracking_states(self, saved_states: Dict[str, any]):
         """
@@ -160,10 +156,9 @@ class XeggexExchange(ExchangeBase):
         when it disconnects.
         :param saved_states: The saved tracking_states.
         """
-        self._in_flight_orders.update({
-            key: XeggexInFlightOrder.from_json(value)
-            for key, value in saved_states.items()
-        })
+        self._in_flight_orders.update(
+            {key: XeggexInFlightOrder.from_json(value) for key, value in saved_states.items()}
+        )
 
     def supported_order_types(self) -> List[OrderType]:
         """
@@ -225,9 +220,7 @@ class XeggexExchange(ExchangeBase):
         """
         try:
             # since there is no ping endpoint, the lowest rate call is to get exchange info
-            await self._api_request("GET",
-                                    'info',
-                                    params={})
+            await self._api_request("GET", "info", params={})
         except asyncio.CancelledError:
             raise
         except Exception:
@@ -253,14 +246,18 @@ class XeggexExchange(ExchangeBase):
             except asyncio.CancelledError:
                 raise
             except Exception as e:
-                self.logger().network(f"Unexpected error while fetching trading rules. Error: {str(e)}",
-                                      exc_info=True,
-                                      app_warning_msg=("Could not fetch new trading rules from "
-                                                       f"{Constants.EXCHANGE_NAME}. Check network connection."))
+                self.logger().network(
+                    f"Unexpected error while fetching trading rules. Error: {str(e)}",
+                    exc_info=True,
+                    app_warning_msg=(
+                        "Could not fetch new trading rules from "
+                        f"{Constants.EXCHANGE_NAME}. Check network connection."
+                    ),
+                )
                 await asyncio.sleep(0.5)
 
     async def _update_trading_rules(self):
-        symbols_info = await self._api_request("GET", endpoint=Constants.ENDPOINT['SYMBOL'])
+        symbols_info = await self._api_request("GET", endpoint=Constants.ENDPOINT["SYMBOL"])
         self._trading_rules.clear()
         self._trading_rules = await self._format_trading_rules(symbols_info)
 
@@ -273,23 +270,29 @@ class XeggexExchange(ExchangeBase):
         result = {}
         for rule in symbols_info:
             try:
-                trading_pair = await XeggexAPIOrderBookDataSource.trading_pair_associated_to_exchange_symbol(rule["symbol"])
-                price_step = Decimal(1) / 10**Decimal(str(rule["priceDecimals"]))
-                size_step = Decimal(1) / 10**Decimal(str(rule["quantityDecimals"]))
-                result[trading_pair] = TradingRule(trading_pair,
-                                                   min_order_size=size_step,
-                                                   min_base_amount_increment=size_step,
-                                                   min_price_increment=price_step)
+                trading_pair = await XeggexAPIOrderBookDataSource.trading_pair_associated_to_exchange_symbol(
+                    rule["symbol"]
+                )
+                price_step = Decimal(1) / 10 ** Decimal("10")
+                size_step = Decimal(1) / 10 ** Decimal("10")
+                result[trading_pair] = TradingRule(
+                    trading_pair,
+                    min_order_size=size_step,
+                    min_base_amount_increment=size_step,
+                    min_price_increment=price_step,
+                )
             except Exception:
                 self.logger().error(f"Error parsing the trading pair rule {rule}. Skipping.", exc_info=True)
         return result
 
-    async def _api_request(self,
-                           method: str,
-                           endpoint: str,
-                           params: Optional[Dict[str, Any]] = None,
-                           is_auth_required: bool = False,
-                           try_count: int = 0) -> Dict[str, Any]:
+    async def _api_request(
+        self,
+        method: str,
+        endpoint: str,
+        params: Optional[Dict[str, Any]] = None,
+        is_auth_required: bool = False,
+        try_count: int = 0,
+    ) -> Dict[str, Any]:
         """
         Sends an aiohttp request and waits for a response.
         :param method: The HTTP method, e.g. get or post
@@ -307,29 +310,39 @@ class XeggexExchange(ExchangeBase):
             body_json = {}
             for k, v in params.items():
                 body_json[k] = v
-            body = json.dumps(body_json, separators=(',', ':'))
+            body = json.dumps(body_json, separators=(",", ":"))
         else:
             body = None
 
         # Generate auth headers if needed.
         headers: dict = {}
         if is_auth_required:
-            headers: dict = self._xeggex_auth.get_headers(method, f"{Constants.REST_URL}/{endpoint}",
-                                                          params)
+            headers: dict = self._xeggex_auth.get_headers(method, f"{Constants.REST_URL}/{endpoint}", params)
         # Build request coro
-        response_coro = shared_client.request(method=method.upper(), url=url, headers=headers,
-                                              params=qs_params, data=body,
-                                              timeout=Constants.API_CALL_TIMEOUT)
+        response_coro = shared_client.request(
+            method=method.upper(),
+            url=url,
+            headers=headers,
+            params=qs_params,
+            data=body,
+            timeout=Constants.API_CALL_TIMEOUT,
+        )
         http_status, parsed_response, request_errors = await aiohttp_response_with_errors(response_coro)
         if request_errors or parsed_response is None:
             if try_count < Constants.API_MAX_RETRIES:
                 try_count += 1
                 time_sleep = retry_sleep_time(try_count)
-                self.logger().info(f"Error fetching data from {url}. HTTP status is {http_status}. "
-                                   f"Retrying in {time_sleep:.0f}s.")
+                self.logger().info(
+                    f"Error fetching data from {url}. HTTP status is {http_status}. " f"Retrying in {time_sleep:.0f}s."
+                )
                 await asyncio.sleep(time_sleep)
-                return await self._api_request(method=method, endpoint=endpoint, params=params,
-                                               is_auth_required=is_auth_required, try_count=try_count)
+                return await self._api_request(
+                    method=method,
+                    endpoint=endpoint,
+                    params=params,
+                    is_auth_required=is_auth_required,
+                    try_count=try_count,
+                )
             else:
                 raise XeggexAPIError({"error": parsed_response, "status": http_status})
         if "error" in parsed_response:
@@ -355,8 +368,9 @@ class XeggexExchange(ExchangeBase):
             raise ValueError(f"No order book exists for '{trading_pair}'.")
         return self.order_book_tracker.order_books[trading_pair]
 
-    def buy(self, trading_pair: str, amount: Decimal, order_type=OrderType.MARKET,
-            price: Decimal = s_decimal_NaN, **kwargs) -> str:
+    def buy(
+        self, trading_pair: str, amount: Decimal, order_type=OrderType.MARKET, price: Decimal = s_decimal_NaN, **kwargs
+    ) -> str:
         """
         Buys an amount of base asset (of the given trading pair). This function returns immediately.
         To see an actual order, you'll have to wait for BuyOrderCreatedEvent.
@@ -370,8 +384,9 @@ class XeggexExchange(ExchangeBase):
         safe_ensure_future(self._create_order(TradeType.BUY, order_id, trading_pair, amount, order_type, price))
         return order_id
 
-    def sell(self, trading_pair: str, amount: Decimal, order_type=OrderType.MARKET,
-             price: Decimal = s_decimal_NaN, **kwargs) -> str:
+    def sell(
+        self, trading_pair: str, amount: Decimal, order_type=OrderType.MARKET, price: Decimal = s_decimal_NaN, **kwargs
+    ) -> str:
         """
         Sells an amount of base asset (of the given trading pair). This function returns immediately.
         To see an actual order, you'll have to wait for SellOrderCreatedEvent.
@@ -395,13 +410,15 @@ class XeggexExchange(ExchangeBase):
         safe_ensure_future(self._execute_cancel(trading_pair, order_id))
         return order_id
 
-    async def _create_order(self,
-                            trade_type: TradeType,
-                            order_id: str,
-                            trading_pair: str,
-                            amount: Decimal,
-                            order_type: OrderType,
-                            price: Decimal):
+    async def _create_order(
+        self,
+        trade_type: TradeType,
+        order_id: str,
+        trading_pair: str,
+        amount: Decimal,
+        order_type: OrderType,
+        price: Decimal,
+    ):
         """
         Calls create-order API end point to place an order, starts tracking the order and triggers order created event.
         :param trade_type: BUY or SELL
@@ -418,26 +435,30 @@ class XeggexExchange(ExchangeBase):
         amount = self.quantize_order_amount(trading_pair, amount)
         price = self.quantize_order_price(trading_pair, price)
         if amount < trading_rule.min_order_size:
-            raise ValueError(f"Buy order amount {amount} is lower than the minimum order size "
-                             f"{trading_rule.min_order_size}.")
+            raise ValueError(
+                f"Buy order amount {amount} is lower than the minimum order size " f"{trading_rule.min_order_size}."
+            )
         order_type_str = order_type.name.lower().split("_")[0]
         symbol = await XeggexAPIOrderBookDataSource.exchange_symbol_associated_to_pair(trading_pair)
-        api_params = {"symbol": symbol,
-                      "side": trade_type.name.lower(),
-                      "type": order_type_str,
-                      "price": f"{price:f}",
-                      "quantity": f"{amount:f}",
-                      "userProvidedId": order_id,
-                      "strictValidate": "true"
-                      }
+        api_params = {
+            "symbol": symbol,
+            "side": trade_type.name.lower(),
+            "type": order_type_str,
+            "price": f"{price:f}",
+            "quantity": f"{amount:f}",
+            "userProvidedId": order_id,
+            "strictValidate": "false",
+        }
         self.start_tracking_order(order_id, None, trading_pair, trade_type, price, amount, order_type)
         try:
             order_result = await self._api_request("POST", Constants.ENDPOINT["ORDER_CREATE"], api_params, True)
             exchange_order_id = order_result["id"]
             tracked_order = self._in_flight_orders.get(order_id)
             if tracked_order is not None:
-                self.logger().info(f"Created {order_type.name} {trade_type.name} order {order_id} for "
-                                   f"{amount} {trading_pair} exchangeOrderId is {exchange_order_id}.")
+                self.logger().info(
+                    f"Created {order_type.name} {trade_type.name} order {order_id} for "
+                    f"{amount} {trading_pair} exchangeOrderId is {exchange_order_id}."
+                )
                 tracked_order.update_exchange_order_id(exchange_order_id)
             if trade_type is TradeType.BUY:
                 event_tag = MarketEvent.BuyOrderCreated
@@ -445,37 +466,43 @@ class XeggexExchange(ExchangeBase):
             else:
                 event_tag = MarketEvent.SellOrderCreated
                 event_cls = SellOrderCreatedEvent
-            self.trigger_event(event_tag,
-                               event_cls(
-                                   self.current_timestamp,
-                                   order_type,
-                                   trading_pair,
-                                   amount,
-                                   price,
-                                   order_id,
-                                   tracked_order.creation_timestamp))
+            self.trigger_event(
+                event_tag,
+                event_cls(
+                    self.current_timestamp,
+                    order_type,
+                    trading_pair,
+                    amount,
+                    price,
+                    order_id,
+                    tracked_order.creation_timestamp,
+                ),
+            )
         except asyncio.CancelledError:
             raise
         except XeggexAPIError as e:
-            error_reason = e.error_payload.get('error', {}).get('message')
+            error_reason = e.error_payload.get("error", {}).get("message")
             self.stop_tracking_order(order_id)
             self.logger().network(
                 f"Error submitting {trade_type.name} {order_type.name} order to {Constants.EXCHANGE_NAME} for "
                 f"{amount} {trading_pair} {price} - {error_reason}.",
                 exc_info=True,
-                app_warning_msg=(f"Error submitting order to {Constants.EXCHANGE_NAME} - {error_reason}.")
+                app_warning_msg=(f"Error submitting order to {Constants.EXCHANGE_NAME} - {error_reason}."),
             )
-            self.trigger_event(MarketEvent.OrderFailure,
-                               MarketOrderFailureEvent(self.current_timestamp, order_id, order_type))
+            self.trigger_event(
+                MarketEvent.OrderFailure, MarketOrderFailureEvent(self.current_timestamp, order_id, order_type)
+            )
 
-    def start_tracking_order(self,
-                             order_id: str,
-                             exchange_order_id: str,
-                             trading_pair: str,
-                             trade_type: TradeType,
-                             price: Decimal,
-                             amount: Decimal,
-                             order_type: OrderType):
+    def start_tracking_order(
+        self,
+        order_id: str,
+        exchange_order_id: str,
+        trading_pair: str,
+        trade_type: TradeType,
+        price: Decimal,
+        amount: Decimal,
+        order_type: OrderType,
+    ):
         """
         Starts tracking an order by simply adding it into _in_flight_orders dictionary.
         """
@@ -487,7 +514,7 @@ class XeggexExchange(ExchangeBase):
             trade_type=trade_type,
             price=price,
             amount=amount,
-            creation_timestamp=self.current_timestamp
+            creation_timestamp=self.current_timestamp,
         )
 
     def stop_tracking_order(self, order_id: str):
@@ -513,24 +540,22 @@ class XeggexExchange(ExchangeBase):
             if tracked_order is None:
                 raise ValueError(f"Failed to cancel order - {order_id}. Order not found.")
             api_params = {"id": order_id}
-            await self._api_request("POST",
-                                    Constants.ENDPOINT["ORDER_DELETE"],
-                                    api_params,
-                                    True)
+            await self._api_request("POST", Constants.ENDPOINT["ORDER_DELETE"], api_params, True)
             order_was_cancelled = True
         except asyncio.CancelledError:
             raise
         except XeggexAPIError as e:
-            err = e.error_payload.get('error', e.error_payload)
+            err = e.error_payload.get("error", e.error_payload)
             self._order_not_found_records[order_id] = self._order_not_found_records.get(order_id, 0) + 1
-            if err.get('code') == 20002 and \
-                    self._order_not_found_records[order_id] >= self.ORDER_NOT_EXIST_CANCEL_COUNT:
+            if (
+                err.get("code") == 20002
+                and self._order_not_found_records[order_id] >= self.ORDER_NOT_EXIST_CANCEL_COUNT
+            ):
                 order_was_cancelled = True
         if order_was_cancelled:
             self.logger().info(f"Successfully canceled order {order_id} on {Constants.EXCHANGE_NAME}.")
             self.stop_tracking_order(order_id)
-            self.trigger_event(MarketEvent.OrderCancelled,
-                               OrderCancelledEvent(self.current_timestamp, order_id))
+            self.trigger_event(MarketEvent.OrderCancelled, OrderCancelledEvent(self.current_timestamp, order_id))
             tracked_order.cancelled_event.set()
             return CancellationResult(order_id, True)
         else:
@@ -538,7 +563,7 @@ class XeggexExchange(ExchangeBase):
                 f"Failed to cancel order {order_id}",
                 exc_info=True,
                 app_warning_msg=f"Failed to cancel the order {order_id} on {Constants.EXCHANGE_NAME}. "
-                                f"Check API key and network connection."
+                f"Check API key and network connection.",
             )
             return CancellationResult(order_id, False)
 
@@ -560,10 +585,13 @@ class XeggexExchange(ExchangeBase):
                 raise
             except Exception as e:
                 self.logger().error(str(e), exc_info=True)
-                warn_msg = (f"Could not fetch account updates from {Constants.EXCHANGE_NAME}. "
-                            "Check API key and network connection.")
-                self.logger().network("Unexpected error while fetching account updates.", exc_info=True,
-                                      app_warning_msg=warn_msg)
+                warn_msg = (
+                    f"Could not fetch account updates from {Constants.EXCHANGE_NAME}. "
+                    "Check API key and network connection."
+                )
+                self.logger().network(
+                    "Unexpected error while fetching account updates.", exc_info=True, app_warning_msg=warn_msg
+                )
                 await asyncio.sleep(0.5)
 
     async def _update_balances(self):
@@ -586,25 +614,29 @@ class XeggexExchange(ExchangeBase):
             for tracked_order in tracked_orders:
                 # exchange_order_id = await tracked_order.get_exchange_order_id()
                 order_id = tracked_order.client_order_id
-                tasks.append(self._api_request("GET",
-                                               Constants.ENDPOINT["ORDER_STATUS"].format(id=order_id),
-                                               is_auth_required=True))
+                tasks.append(
+                    self._api_request(
+                        "GET", Constants.ENDPOINT["ORDER_STATUS"].format(id=order_id), is_auth_required=True
+                    )
+                )
             self.logger().debug(f"Polling for order status updates of {len(tasks)} orders.")
             responses = await safe_gather(*tasks, return_exceptions=True)
             for response, tracked_order in zip(responses, tracked_orders):
                 client_order_id = tracked_order.client_order_id
                 if isinstance(response, XeggexAPIError):
-                    err = response.error_payload.get('error', response.error_payload)
-                    if err.get('code') == 20002:
-                        self._order_not_found_records[client_order_id] = \
+                    err = response.error_payload.get("error", response.error_payload)
+                    if err.get("code") == 20002:
+                        self._order_not_found_records[client_order_id] = (
                             self._order_not_found_records.get(client_order_id, 0) + 1
+                        )
                         if self._order_not_found_records[client_order_id] < self.ORDER_NOT_EXIST_CONFIRMATION_COUNT:
                             # Wait until the order not found error have repeated a few times before actually treating
                             # it as failed. See: https://github.com/CoinAlpha/hummingbot/issues/601
                             continue
-                        self.trigger_event(MarketEvent.OrderFailure,
-                                           MarketOrderFailureEvent(
-                                               self.current_timestamp, client_order_id, tracked_order.order_type))
+                        self.trigger_event(
+                            MarketEvent.OrderFailure,
+                            MarketOrderFailureEvent(self.current_timestamp, client_order_id, tracked_order.order_type),
+                        )
                         self.stop_tracking_order(client_order_id)
                     else:
                         continue
@@ -649,14 +681,14 @@ class XeggexExchange(ExchangeBase):
         if tracked_order.is_cancelled:
             self.logger().info(f"Successfully canceled order {client_order_id}.")
             self.stop_tracking_order(client_order_id)
-            self.trigger_event(MarketEvent.OrderCancelled,
-                               OrderCancelledEvent(self.current_timestamp, client_order_id))
+            self.trigger_event(MarketEvent.OrderCancelled, OrderCancelledEvent(self.current_timestamp, client_order_id))
             tracked_order.cancelled_event.set()
         elif tracked_order.is_failure:
             self.logger().info(f"The market order {client_order_id} has failed according to order status API. ")
-            self.trigger_event(MarketEvent.OrderFailure,
-                               MarketOrderFailureEvent(
-                                   self.current_timestamp, client_order_id, tracked_order.order_type))
+            self.trigger_event(
+                MarketEvent.OrderFailure,
+                MarketOrderFailureEvent(self.current_timestamp, client_order_id, tracked_order.order_type),
+            )
             self.stop_tracking_order(client_order_id)
 
     async def _process_trade_message(self, trade_msg: Dict[str, Any]):
@@ -710,29 +742,41 @@ class XeggexExchange(ExchangeBase):
                 AddedToCostTradeFee(
                     flat_fees=[TokenAmount(tracked_order.quote_asset, Decimal(str(trade_msg.get("tradeFee", "0"))))]
                 ),
-                exchange_trade_id=trade_msg["tradeId"]
-            )
+                exchange_trade_id=trade_msg["tradeId"],
+            ),
         )
-        if math.isclose(tracked_order.executed_amount_base, tracked_order.amount) or \
-                tracked_order.executed_amount_base >= tracked_order.amount or \
-                tracked_order.is_done:
+        if (
+            math.isclose(tracked_order.executed_amount_base, tracked_order.amount)
+            or tracked_order.executed_amount_base >= tracked_order.amount
+            or tracked_order.is_done
+        ):
             tracked_order.last_state = "Filled"
-            self.logger().info(f"The {tracked_order.trade_type.name} order "
-                               f"{tracked_order.client_order_id} has completed "
-                               f"according to order status API.")
-            event_tag = MarketEvent.BuyOrderCompleted if tracked_order.trade_type is TradeType.BUY \
+            self.logger().info(
+                f"The {tracked_order.trade_type.name} order "
+                f"{tracked_order.client_order_id} has completed "
+                f"according to order status API."
+            )
+            event_tag = (
+                MarketEvent.BuyOrderCompleted
+                if tracked_order.trade_type is TradeType.BUY
                 else MarketEvent.SellOrderCompleted
-            event_class = BuyOrderCompletedEvent if tracked_order.trade_type is TradeType.BUY \
-                else SellOrderCompletedEvent
+            )
+            event_class = (
+                BuyOrderCompletedEvent if tracked_order.trade_type is TradeType.BUY else SellOrderCompletedEvent
+            )
             await asyncio.sleep(0.1)
-            self.trigger_event(event_tag,
-                               event_class(self.current_timestamp,
-                                           tracked_order.client_order_id,
-                                           tracked_order.base_asset,
-                                           tracked_order.quote_asset,
-                                           tracked_order.executed_amount_base,
-                                           tracked_order.executed_amount_quote,
-                                           tracked_order.order_type))
+            self.trigger_event(
+                event_tag,
+                event_class(
+                    self.current_timestamp,
+                    tracked_order.client_order_id,
+                    tracked_order.base_asset,
+                    tracked_order.quote_asset,
+                    tracked_order.executed_amount_base,
+                    tracked_order.executed_amount_quote,
+                    tracked_order.order_type,
+                ),
+            )
             self.stop_tracking_order(tracked_order.client_order_id)
 
     def _process_balance_message(self, balance_update):
@@ -768,9 +812,12 @@ class XeggexExchange(ExchangeBase):
                 cancellation_results = await safe_gather(*tasks, return_exceptions=False)
         except Exception:
             self.logger().network(
-                "Unexpected error canceling orders.", exc_info=True,
-                app_warning_msg=(f"Failed to cancel all orders on {Constants.EXCHANGE_NAME}. "
-                                 "Check API key and network connection.")
+                "Unexpected error canceling orders.",
+                exc_info=True,
+                app_warning_msg=(
+                    f"Failed to cancel all orders on {Constants.EXCHANGE_NAME}. "
+                    "Check API key and network connection."
+                ),
             )
         return cancellation_results
 
@@ -780,9 +827,11 @@ class XeggexExchange(ExchangeBase):
         It checks if status polling task is due for execution.
         """
         now = time.time()
-        poll_interval = (Constants.SHORT_POLL_INTERVAL
-                         if now - self._user_stream_tracker.last_recv_time > 60.0
-                         else Constants.LONG_POLL_INTERVAL)
+        poll_interval = (
+            Constants.SHORT_POLL_INTERVAL
+            if now - self._user_stream_tracker.last_recv_time > 60.0
+            else Constants.LONG_POLL_INTERVAL
+        )
         last_tick = int(self._last_timestamp / poll_interval)
         current_tick = int(timestamp / poll_interval)
         if current_tick > last_tick:
@@ -790,14 +839,16 @@ class XeggexExchange(ExchangeBase):
                 self._poll_notifier.set()
         self._last_timestamp = timestamp
 
-    def get_fee(self,
-                base_currency: str,
-                quote_currency: str,
-                order_type: OrderType,
-                order_side: TradeType,
-                amount: Decimal,
-                price: Decimal = s_decimal_NaN,
-                is_maker: Optional[bool] = None) -> AddedToCostTradeFee:
+    def get_fee(
+        self,
+        base_currency: str,
+        quote_currency: str,
+        order_type: OrderType,
+        order_side: TradeType,
+        amount: Decimal,
+        price: Decimal = s_decimal_NaN,
+        is_maker: Optional[bool] = None,
+    ) -> AddedToCostTradeFee:
         """
         To get trading fee, this function is simplified by using fee override configuration. Most parameters to this
         function are ignore except order_type. Use OrderType.LIMIT_MAKER to specify you want trading fee for
@@ -814,9 +865,13 @@ class XeggexExchange(ExchangeBase):
                 raise
             except Exception:
                 self.logger().network(
-                    "Unknown error. Retrying after 1 seconds.", exc_info=True,
-                    app_warning_msg=(f"Could not fetch user events from {Constants.EXCHANGE_NAME}. "
-                                     "Check API key and network connection."))
+                    "Unknown error. Retrying after 1 seconds.",
+                    exc_info=True,
+                    app_warning_msg=(
+                        f"Could not fetch user events from {Constants.EXCHANGE_NAME}. "
+                        "Check API key and network connection."
+                    ),
+                )
                 await asyncio.sleep(1.0)
 
     async def _user_stream_event_listener(self):
@@ -861,7 +916,8 @@ class XeggexExchange(ExchangeBase):
                 self.logger().info(f"Unsupported order type found: {order['type']}")
                 continue
             trading_pair = await XeggexAPIOrderBookDataSource.trading_pair_associated_to_exchange_symbol(
-                order["symbol"])
+                order["symbol"]
+            )
             ret_val.append(
                 OpenOrder(
                     client_order_id=order["userProvidedId"],
@@ -873,7 +929,7 @@ class XeggexExchange(ExchangeBase):
                     order_type=OrderType.LIMIT,
                     is_buy=True if order["side"].lower() == TradeType.BUY.name.lower() else False,
                     time=str_date_to_ts(order["createdAt"]),
-                    exchange_order_id=order["id"]
+                    exchange_order_id=order["id"],
                 )
             )
         return ret_val

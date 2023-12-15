@@ -1,9 +1,9 @@
 # A single source of truth for constant variables related to the exchange
 class Constants:
     EXCHANGE_NAME = "xeggex"
-    REST_URL = "https://xeggex.com/api/v2"
-    WS_PRIVATE_URL = "wss://ws.xeggex.com"
-    WS_PUBLIC_URL = "wss://ws.xeggex.com"
+    REST_URL = "https://api.xeggex.com/api/v2"
+    WS_PRIVATE_URL = "wss://api.xeggex.com"
+    WS_PUBLIC_URL = "wss://api.xeggex.com"
 
     HBOT_BROKER_ID = "HUMBOT"
 
@@ -11,7 +11,7 @@ class Constants:
         # Public Endpoints REST API
         "TICKER": "tickers",
         "TICKER_SINGLE": "ticker/{trading_pair}",
-        "SYMBOL": "market/getlist",
+        "SYMBOL": "pool/getlist",
         "ORDER_BOOK": "orderbook",
         "ORDER_CREATE": "createorder",
         "ORDER_DELETE": "cancelorder",
@@ -24,7 +24,6 @@ class Constants:
         "TRADES": "Trades",
         "ORDERS": "Orderbook",
         "USER_ORDERS_TRADES": "Reports",
-
     }
 
     WS_METHODS = {

@@ -85,7 +85,7 @@ class XeggexAuth():
         """
         noncetime = int(self.time_provider.time() * 1e3)
         randnonce = random.randrange(1000, 9999)
-        none = int(str(noncetime) + str(randnonce))
+        nonce = int(str(noncetime) + str(randnonce))
         signature = self.generate_signature(method, url, nonce, params)
         headers = {
             "Content-Type": "application/json",

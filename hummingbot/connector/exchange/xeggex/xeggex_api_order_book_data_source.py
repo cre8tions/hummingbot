@@ -37,15 +37,13 @@ class XeggexAPIOrderBookDataSource(OrderBookTrackerDataSource):
 
     @classmethod
     async def init_trading_pair_symbols(cls, shared_session: Optional[aiohttp.ClientSession] = None):
-        """Initialize _trading_pair_symbol_map class variable
-        """
+        """Initialize _trading_pair_symbol_map class variable"""
 
         symbols: List[Dict[str, Any]] = await api_call_with_retries(
-            "GET",
-            Constants.ENDPOINT["SYMBOL"],
-            shared_client=shared_session)
+            "GET", Constants.ENDPOINT["SYMBOL"], shared_client=shared_session
+        )
         cls._trading_pair_symbol_map = {
-            symbol_data["symbol"]: (f"{symbol_data['primaryAsset']['ticker']}-{symbol_data['secondaryAsset']['ticker']}")
+            symbol_data["symbol"]: (f"{symbol_data['symbol'].replace('/', '-')}")
             for symbol_data in symbols
         }
 
@@ -64,7 +62,7 @@ class XeggexAPIOrderBookDataSource(OrderBookTrackerDataSource):
         for trading_pair in trading_pairs:
             ex_pair: str = await XeggexAPIOrderBookDataSource.exchange_symbol_associated_to_pair(trading_pair)
             if len(trading_pairs) > 1:
-                ticker: Dict[Any] = list([tic for tic in tickers if tic['symbol'] == ex_pair])[0]
+                ticker: Dict[Any] = list([tic for tic in tickers if tic["symbol"] == ex_pair])[0]
             else:
                 url_endpoint = Constants.ENDPOINT["TICKER_SINGLE"].format(trading_pair=ex_pair.replace("/", "_"))
                 ticker: Dict[Any] = await api_call_with_retries("GET", url_endpoint)
@@ -100,37 +98,42 @@ class XeggexAPIOrderBookDataSource(OrderBookTrackerDataSource):
         """
         try:
             ex_pair = await XeggexAPIOrderBookDataSource.exchange_symbol_associated_to_pair(trading_pair)
-            orderbook_response: Dict[Any] = await api_call_with_retries("GET", Constants.ENDPOINT["ORDER_BOOK"],
-                                                                        params={"depth": 150, "ticker_id": ex_pair})
+            orderbook_response: Dict[Any] = await api_call_with_retries(
+                "GET", Constants.ENDPOINT["ORDER_BOOK"], params={"depth": 150, "ticker_id": ex_pair}
+            )
             return orderbook_response
         except XeggexAPIError as e:
-            err = e.error_payload.get('error', e.error_payload)
+            err = e.error_payload.get("error", e.error_payload)
             raise IOError(
                 f"Error fetching OrderBook for {trading_pair} at {Constants.EXCHANGE_NAME}. "
-                f"HTTP status is {e.error_payload['status']}. Error is {err.get('message', str(err))}.")
+                f"HTTP status is {e.error_payload['status']}. Error is {err.get('message', str(err))}."
+            )
 
     async def get_new_order_book(self, trading_pair: str) -> OrderBook:
         snapshot: Dict[str, Any] = await self.get_order_book_data(trading_pair)
         snapshot_timestamp: float = time.time()
         snapshot_msg: OrderBookMessage = XeggexOrderBook.snapshot_message_from_exchange(
-            snapshot,
-            snapshot_timestamp,
-            metadata={"trading_pair": trading_pair})
+            snapshot, snapshot_timestamp, metadata={"trading_pair": trading_pair}
+        )
         order_book = self.order_book_create_function()
 
         np_bids = np.array(
-            [[snapshot_msg.timestamp,
-                float(item[0]),
-                float(item[1]),
-                snapshot_msg.update_id]
-                for item in snapshot["bids"]], dtype='float64', ndmin=2)
+            [
+                [snapshot_msg.timestamp, float(item[0]), float(item[1]), snapshot_msg.update_id]
+                for item in snapshot["bids"]
+            ],
+            dtype="float64",
+            ndmin=2,
+        )
 
         np_asks = np.array(
-            [[snapshot_msg.timestamp,
-                float(item[0]),
-                float(item[1]),
-                snapshot_msg.update_id]
-                for item in snapshot["asks"]], dtype='float64', ndmin=2)
+            [
+                [snapshot_msg.timestamp, float(item[0]), float(item[1]), snapshot_msg.update_id]
+                for item in snapshot["asks"]
+            ],
+            dtype="float64",
+            ndmin=2,
+        )
 
         bids = [OrderBookRow(price, qty, update_id) for ts, price, qty, update_id in np_bids]
         asks = [OrderBookRow(price, qty, update_id) for ts, price, qty, update_id in np_asks]
@@ -155,7 +158,7 @@ class XeggexAPIOrderBookDataSource(OrderBookTrackerDataSource):
                     method: str = response.get("method", None)
                     trades_data: str = response.get("params", None)
 
-                    if trades_data is None or method != Constants.WS_METHODS['TRADES_UPDATE']:
+                    if trades_data is None or method != Constants.WS_METHODS["TRADES_UPDATE"]:
                         continue
 
                     pair: str = await self.trading_pair_associated_to_exchange_symbol(response["params"]["symbol"])
@@ -164,9 +167,8 @@ class XeggexAPIOrderBookDataSource(OrderBookTrackerDataSource):
                         trade: Dict[Any] = trade
                         trade_timestamp: int = str_date_to_ts(trade["timestamp"])
                         trade_msg: OrderBookMessage = XeggexOrderBook.trade_message_from_exchange(
-                            trade,
-                            trade_timestamp,
-                            metadata={"trading_pair": pair})
+                            trade, trade_timestamp, metadata={"trading_pair": pair}
+                        )
                         output.put_nowait(trade_msg)
 
             except asyncio.CancelledError:
@@ -187,8 +189,8 @@ class XeggexAPIOrderBookDataSource(OrderBookTrackerDataSource):
                 await ws.connect()
 
                 order_book_methods = [
-                    Constants.WS_METHODS['ORDERS_SNAPSHOT'],
-                    Constants.WS_METHODS['ORDERS_UPDATE'],
+                    Constants.WS_METHODS["ORDERS_SNAPSHOT"],
+                    Constants.WS_METHODS["ORDERS_UPDATE"],
                 ]
 
                 for pair in self._trading_pairs:
@@ -205,23 +207,26 @@ class XeggexAPIOrderBookDataSource(OrderBookTrackerDataSource):
                     timestamp: int = str_date_to_ts(order_book_data["timestamp"])
                     pair: str = await self.trading_pair_associated_to_exchange_symbol(order_book_data["symbol"])
 
-                    order_book_msg_cls = (XeggexOrderBook.diff_message_from_exchange
-                                          if method == Constants.WS_METHODS['ORDERS_UPDATE'] else
-                                          XeggexOrderBook.snapshot_message_from_exchange)
+                    order_book_msg_cls = (
+                        XeggexOrderBook.diff_message_from_exchange
+                        if method == Constants.WS_METHODS["ORDERS_UPDATE"]
+                        else XeggexOrderBook.snapshot_message_from_exchange
+                    )
 
                     orderbook_msg: OrderBookMessage = order_book_msg_cls(
-                        order_book_data,
-                        timestamp,
-                        metadata={"trading_pair": pair})
+                        order_book_data, timestamp, metadata={"trading_pair": pair}
+                    )
                     output.put_nowait(orderbook_msg)
 
             except asyncio.CancelledError:
                 raise
             except Exception:
                 self.logger().network(
-                    "Unexpected error with WebSocket connection.", exc_info=True,
+                    "Unexpected error with WebSocket connection.",
+                    exc_info=True,
                     app_warning_msg="Unexpected error with WebSocket connection. Retrying in 30 seconds. "
-                                    "Check network connection.")
+                    "Check network connection.",
+                )
                 await asyncio.sleep(30.0)
             finally:
                 await ws.disconnect()
@@ -237,9 +242,7 @@ class XeggexAPIOrderBookDataSource(OrderBookTrackerDataSource):
                         snapshot: Dict[str, any] = await self.get_order_book_data(trading_pair)
                         snapshot_timestamp: int = snapshot["timestamp"]
                         snapshot_msg: OrderBookMessage = XeggexOrderBook.snapshot_message_from_exchange(
-                            snapshot,
-                            snapshot_timestamp,
-                            metadata={"trading_pair": trading_pair}
+                            snapshot, snapshot_timestamp, metadata={"trading_pair": trading_pair}
                         )
                         output.put_nowait(snapshot_msg)
                         self.logger().debug(f"Saved order book snapshot for {trading_pair}")
@@ -249,9 +252,11 @@ class XeggexAPIOrderBookDataSource(OrderBookTrackerDataSource):
                         raise
                     except Exception:
                         self.logger().network(
-                            "Unexpected error with WebSocket connection.", exc_info=True,
+                            "Unexpected error with WebSocket connection.",
+                            exc_info=True,
                             app_warning_msg="Unexpected error with WebSocket connection. Retrying in 5 seconds. "
-                                            "Check network connection.")
+                            "Check network connection.",
+                        )
                         await asyncio.sleep(5.0)
                 this_hour: pd.Timestamp = pd.Timestamp.utcnow().replace(minute=0, second=0, microsecond=0)
                 next_hour: pd.Timestamp = this_hour + pd.Timedelta(hours=1)
