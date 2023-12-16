@@ -79,8 +79,8 @@ class XeggexOrderBookTracker(OrderBookTracker):
                     mbids = message.content.get('bids')
                     masks = message.content.get('asks')
 
-                    smsg = str(mbids)
-                    self.logger().info(f"TESTING3... {smsg}.")
+                    # smsg = str(mbids)
+                    # self.logger().info(f"TESTING3... {smsg}.")
 
                     np_bids = s_empty_diff
                     np_asks = s_empty_diff
@@ -141,8 +141,8 @@ class XeggexOrderBookTracker(OrderBookTracker):
                     mbids = message.content.get('bids')
                     masks = message.content.get('asks')
 
-                    smsg = str(mbids)
-                    self.logger().info(f"TESTING2... {smsg}.")
+                    # smsg = str(mbids)
+                    # self.logger().info(f"TESTING2... {smsg}.")
 
                     np_bids = s_empty_diff
                     np_asks = s_empty_diff
@@ -187,8 +187,8 @@ class XeggexOrderBookTracker(OrderBookTracker):
                         mbids = diff_message.content.get('bids')
                         masks = diff_message.content.get('asks')
 
-                        smsg = str(mbids)
-                        self.logger().info(f"TESTING4... {smsg}.")
+                        # smsg = str(mbids)
+                        # self.logger().info(f"TESTING4... {smsg}.")
 
                         np_bids = s_empty_diff
                         np_asks = s_empty_diff
