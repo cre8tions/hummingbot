@@ -273,8 +273,8 @@ class XeggexExchange(ExchangeBase):
                 trading_pair = await XeggexAPIOrderBookDataSource.trading_pair_associated_to_exchange_symbol(
                     rule["symbol"]
                 )
-                price_step = Decimal(1) / 10 ** Decimal("10")
-                size_step = Decimal(1) / 10 ** Decimal("10")
+                price_step = Decimal(1) / 10 ** Decimal("8")
+                size_step = Decimal(1) / 10 ** Decimal("8")
                 result[trading_pair] = TradingRule(
                     trading_pair,
                     min_order_size=size_step,

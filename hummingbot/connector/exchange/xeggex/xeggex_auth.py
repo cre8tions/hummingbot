@@ -54,7 +54,7 @@ class XeggexAuth():
                     body_json[k] = v
                 body = json.dumps(body_json, separators=(',', ':'))
         # Concat payload
-        self.logger().info(f"Test Body {method}-{self.api_key}-{url}-{body}-{noncestr}")
+        # self.logger().info(f"Test Body {method}-{self.api_key}-{url}-{body}-{noncestr}")
         payload = f"{self.api_key}{url}{body}{noncestr}"
         # Create HS256 sig
         sig = hmac.new(self.secret_key.encode(), payload.encode(), hashlib.sha256).hexdigest()
