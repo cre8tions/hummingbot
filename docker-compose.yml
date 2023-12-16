@@ -24,13 +24,13 @@ services:
     #    - CONFIG_PASSWORD=a
     #    - CONFIG_FILE_NAME=simple_pmm_example.py
 
-  dashboard:
-    container_name: dashboard
-    image: hummingbot/dashboard:latest
-    volumes:
-      - ./data:/home/dashboard/data
-    ports:
-      - "8501:8501"
+  # dashboard:
+  #   container_name: dashboard
+  #   image: hummingbot/dashboard:latest
+  #   volumes:
+  #     - ./data:/home/dashboard/data
+  #   ports:
+  #     - "8501:8501"
 
   # gateway:
   #   container_name: gateway
