@@ -42,6 +42,7 @@ connector_status = {
     'polkadex': 'silver',
     'vertex': 'bronze',
     'vertex_testnet': 'bronze',
+    'xeggex': 'green',
     # gateway connectors
     'curve': 'bronze',
     'dexalot': 'silver',
