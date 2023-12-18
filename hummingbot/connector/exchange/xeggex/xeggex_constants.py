@@ -11,7 +11,7 @@ class Constants:
         # Public Endpoints REST API
         "TICKER": "tickers",
         "TICKER_SINGLE": "ticker/{trading_pair}",
-        "SYMBOL": "pool/getlist",
+        "SYMBOL": "market/getlist",
         "ORDER_BOOK": "orderbook",
         "ORDER_CREATE": "createorder",
         "ORDER_DELETE": "cancelorder",
