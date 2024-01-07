@@ -333,8 +333,12 @@ class AmmArbStrategy(StrategyPyBase):
                 side: str = "BUY" if arb_side.is_buy else "SELL"
                 self.log_with_clock(
                     logging.INFO,
-                    f"Placing {side} order for {arb_side.amount} {arb_side.market_info.base_asset} "
+                    f"      Placing {side} order for {arb_side.amount} {arb_side.market_info.base_asset} "
                     f"at {arb_side.market_info.market.display_name} at {arb_side.order_price} price = {arb_side.amount * arb_side.order_price} total",
+                )
+                self.notify_hb_app_with_timestamp(
+                    f"{arb_side.market_info.market.display_name:<10} {side:>4} {arb_side.market_info.base_asset:>5} {arb_side.amount:>.4f} @ "
+                    f"{arb_side.order_price:<.8f}       ${arb_side.amount * arb_side.order_price:>.8f}",
                 )
 
                 order_id: str = await self.place_arb_order(
@@ -509,7 +513,7 @@ class AmmArbStrategy(StrategyPyBase):
             log_msg += f" txHash: {order_completed_event.exchange_order_id}"
         self.log_with_clock(logging.INFO, log_msg)
         self.notify_hb_app_with_timestamp(
-            f"+{order_completed_event.quote_asset_amount:.8f} Bought {order_completed_event.base_asset_amount:.8f} "
+            f"     <-- {order_completed_event.quote_asset_amount:.8f} Bought {order_completed_event.base_asset_amount:.8f} "
             f"{order_completed_event.base_asset}-{order_completed_event.quote_asset} "
             f"on {market_info.market.name}."
         )
@@ -525,7 +529,7 @@ class AmmArbStrategy(StrategyPyBase):
             log_msg += f" txHash: {order_completed_event.exchange_order_id}"
         self.log_with_clock(logging.INFO, log_msg)
         self.notify_hb_app_with_timestamp(
-            f"-{order_completed_event.quote_asset_amount:.8f} Sold {order_completed_event.base_asset_amount:.8f} "
+            f"     --> {order_completed_event.quote_asset_amount:.8f} Sold {order_completed_event.base_asset_amount:.8f} "
             f"{order_completed_event.base_asset}-{order_completed_event.quote_asset} "
             f"on {market_info.market.name}."
         )

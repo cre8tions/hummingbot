@@ -19,13 +19,13 @@ class SimpleArbitrage(ScriptStrategyBase):
     A simplified version of Hummingbot arbitrage strategy, this bot checks the Volume Weighted Average Price for
     bid and ask in two exchanges and if it finds a profitable opportunity, it will trade the tokens.
     """
-    order_amount = Decimal("0.01")  # in base asset
-    min_profitability = Decimal("0.002")  # in percentage
-    base = "ETH"
+    order_amount = Decimal("500.0")  # in base asset
+    min_profitability = Decimal("3")  # in percentage
+    base = "FSC"
     quote = "USDT"
     trading_pair = f"{base}-{quote}"
-    exchange_A = "binance_paper_trade"
-    exchange_B = "kucoin_paper_trade"
+    exchange_A = "xeggex"
+    exchange_B = "nokyc"
 
     markets = {exchange_A: {trading_pair},
                exchange_B: {trading_pair}}
@@ -59,7 +59,7 @@ class SimpleArbitrage(ScriptStrategyBase):
         a_fee = self.connectors[self.exchange_A].get_fee(
             base_currency=self.base,
             quote_currency=self.quote,
-            order_type=OrderType.MARKET,
+            order_type=OrderType.LIMIT,
             order_side=TradeType.BUY,
             amount=self.order_amount,
             price=vwap_prices[self.exchange_A]["ask"],
@@ -69,7 +69,7 @@ class SimpleArbitrage(ScriptStrategyBase):
         b_fee = self.connectors[self.exchange_B].get_fee(
             base_currency=self.base,
             quote_currency=self.quote,
-            order_type=OrderType.MARKET,
+            order_type=OrderType.LIMIT,
             order_side=TradeType.BUY,
             amount=self.order_amount,
             price=vwap_prices[self.exchange_B]["ask"],
@@ -115,21 +115,21 @@ class SimpleArbitrage(ScriptStrategyBase):
         if profitability_analysis["buy_a_sell_b"]["profitability_pct"] > self.min_profitability:
             # This means that the ask of the first exchange is lower than the bid of the second one
             proposal[self.exchange_A] = OrderCandidate(trading_pair=self.trading_pair, is_maker=False,
-                                                       order_type=OrderType.MARKET,
+                                                       order_type=OrderType.LIMIT,
                                                        order_side=TradeType.BUY, amount=self.order_amount,
                                                        price=vwap_prices[self.exchange_A]["ask"])
             proposal[self.exchange_B] = OrderCandidate(trading_pair=self.trading_pair, is_maker=False,
-                                                       order_type=OrderType.MARKET,
+                                                       order_type=OrderType.LIMIT,
                                                        order_side=TradeType.SELL, amount=Decimal(self.order_amount),
                                                        price=vwap_prices[self.exchange_B]["bid"])
         elif profitability_analysis["buy_b_sell_a"]["profitability_pct"] > self.min_profitability:
             # This means that the ask of the second exchange is lower than the bid of the first one
             proposal[self.exchange_B] = OrderCandidate(trading_pair=self.trading_pair, is_maker=False,
-                                                       order_type=OrderType.MARKET,
+                                                       order_type=OrderType.LIMIT,
                                                        order_side=TradeType.BUY, amount=self.order_amount,
                                                        price=vwap_prices[self.exchange_B]["ask"])
             proposal[self.exchange_A] = OrderCandidate(trading_pair=self.trading_pair, is_maker=False,
-                                                       order_type=OrderType.MARKET,
+                                                       order_type=OrderType.LIMIT,
                                                        order_side=TradeType.SELL, amount=Decimal(self.order_amount),
                                                        price=vwap_prices[self.exchange_A]["bid"])
 

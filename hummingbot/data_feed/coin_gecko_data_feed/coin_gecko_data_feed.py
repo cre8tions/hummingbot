@@ -45,7 +45,7 @@ class CoinGeckoDataFeed(DataFeedBase):
 
     @property
     def health_check_endpoint(self) -> str:
-        return f"{CONSTANTS.BASE_URL}{CONSTANTS.PING_REST_ENDPOINT}"
+        return f"{CONSTANTS.BASE_URL}{CONSTANTS.PING_REST_ENDPOINT}{CONSTANTS.API_SUFFIX}"
 
     async def start_network(self):
         await self.stop_network()
@@ -61,7 +61,9 @@ class CoinGeckoDataFeed(DataFeedBase):
 
     async def get_supported_vs_tokens(self) -> List[str]:
         rest_assistant = await self._api_factory.get_rest_assistant()
-        supported_vs_tokens_url = f"{CONSTANTS.BASE_URL}{CONSTANTS.SUPPORTED_VS_TOKENS_REST_ENDPOINT}"
+        supported_vs_tokens_url = (
+            f"{CONSTANTS.BASE_URL}{CONSTANTS.SUPPORTED_VS_TOKENS_REST_ENDPOINT}{CONSTANTS.API_SUFFIX}"
+        )
         vs_tokens = await rest_assistant.execute_request(
             url=supported_vs_tokens_url, throttler_limit_id=CONSTANTS.REST_CALL_RATE_LIMIT_ID
         )
@@ -72,7 +74,7 @@ class CoinGeckoDataFeed(DataFeedBase):
     ) -> List[Dict[str, Any]]:
         """Fetches prices specified by 250-length page. Only 50 when category is specified"""
         rest_assistant = await self._api_factory.get_rest_assistant()
-        price_url: str = f"{CONSTANTS.BASE_URL}{CONSTANTS.PRICES_REST_ENDPOINT}"
+        price_url: str = f"{CONSTANTS.BASE_URL}{CONSTANTS.PRICES_REST_ENDPOINT}?{CONSTANTS.API_SUFFIX}"
         params = {
             "vs_currency": vs_currency,
             "order": "market_cap_desc",
@@ -89,7 +91,7 @@ class CoinGeckoDataFeed(DataFeedBase):
 
     async def get_prices_by_token_id(self, vs_currency: str, token_ids: List[str]) -> List[Dict[str, Any]]:
         rest_assistant = await self._api_factory.get_rest_assistant()
-        price_url: str = f"{CONSTANTS.BASE_URL}{CONSTANTS.PRICES_REST_ENDPOINT}"
+        price_url: str = f"{CONSTANTS.BASE_URL}{CONSTANTS.PRICES_REST_ENDPOINT}?{CONSTANTS.API_SUFFIX}"
         token_ids_str = ",".join(map(str.lower, token_ids))
         params = {
             "vs_currency": vs_currency,
@@ -107,9 +109,11 @@ class CoinGeckoDataFeed(DataFeedBase):
             except asyncio.CancelledError:
                 raise
             except Exception:
-                self.logger().network(f"Error getting data from {self.name}", exc_info=True,
-                                      app_warning_msg="Couldn't fetch newest prices from Coin Gecko. "
-                                                      "Check network connection.")
+                self.logger().network(
+                    f"Error getting data from {self.name}",
+                    exc_info=True,
+                    app_warning_msg="Couldn't fetch newest prices from Coin Gecko. " "Check network connection.",
+                )
 
             await self._async_sleep(self._update_interval)
 
@@ -123,7 +127,7 @@ class CoinGeckoDataFeed(DataFeedBase):
         for i in range(1, 5):
             try:
                 results = await self.get_prices_by_page(vs_currency="usd", page_no=i)
-                if 'error' in results:
+                if "error" in results:
                     raise Exception(f"{results['error']}")
                 for result in results:
                     symbol = result["symbol"].upper()

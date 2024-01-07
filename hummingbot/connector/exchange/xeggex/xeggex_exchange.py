@@ -718,8 +718,8 @@ class XeggexExchange(ExchangeBase):
             "tradeFee": "0.000000005"
         }
         """
-        testmessage = str(trade_msg)
-        self.logger().info(f"Trade message {testmessage}")
+        # testmessage = str(trade_msg)
+        # self.logger().info(f"       Trade message {testmessage}")
 
         tracked_orders = list(self._in_flight_orders.values())
         for order in tracked_orders:

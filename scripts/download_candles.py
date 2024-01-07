@@ -16,12 +16,13 @@ class DownloadCandles(ScriptStrategyBase):
     Is important to notice that the component will fail if all the candles are not available since the idea of it is to
     use it in production based on candles needed to compute technical indicators.
     """
-    exchange = os.getenv("EXCHANGE", "binance_perpetual")
-    trading_pairs = os.getenv("TRADING_PAIRS", "DODO-BUSD,LTC-USDT").split(",")
+
+    exchange = os.getenv("EXCHANGE", "xeggex")
+    trading_pairs = os.getenv("TRADING_PAIRS", "FSC-USDT,SISPOP-USDT").split(",")
     intervals = os.getenv("INTERVALS", "1m,3m,5m,1h").split(",")
     days_to_download = int(os.getenv("DAYS_TO_DOWNLOAD", "3"))
     # we can initialize any trading pair since we only need the candles
-    markets = {"binance_paper_trade": {"BTC-USDT"}}
+    markets = {"xeggex": {"FSC-USDT"}}
 
     @staticmethod
     def get_max_records(days_to_download: int, interval: str) -> int:
@@ -37,18 +38,27 @@ class DownloadCandles(ScriptStrategyBase):
         self.candles = {f"{combinations[0]}_{combinations[1]}": {} for combinations in combinations}
         # we need to initialize the candles for each trading pair
         for combination in combinations:
-
-            candle = CandlesFactory.get_candle(CandlesConfig(connector=self.exchange, trading_pair=combination[0], interval=combination[1], max_records=self.get_max_records(self.days_to_download, combination[1])))
+            candle = CandlesFactory.get_candle(
+                CandlesConfig(
+                    connector=self.exchange,
+                    trading_pair=combination[0],
+                    interval=combination[1],
+                    max_records=self.get_max_records(self.days_to_download, combination[1]),
+                )
+            )
             candle.start()
             # we are storing the candles object and the csv path to save the candles
             self.candles[f"{combination[0]}_{combination[1]}"]["candles"] = candle
-            self.candles[f"{combination[0]}_{combination[1]}"][
-                "csv_path"] = data_path() + f"/candles_{self.exchange}_{combination[0]}_{combination[1]}.csv"
+            self.candles[f"{combination[0]}_{combination[1]}"]["csv_path"] = (
+                data_path() + f"/candles_{self.exchange}_{combination[0]}_{combination[1]}.csv"
+            )
 
     def on_tick(self):
         for trading_pair, candles_info in self.candles.items():
             if not candles_info["candles"].is_ready:
-                self.logger().info(f"Candles not ready yet for {trading_pair}! Missing {candles_info['candles']._candles.maxlen - len(candles_info['candles']._candles)}")
+                self.logger().info(
+                    f"Candles not ready yet for {trading_pair}! Missing {candles_info['candles']._candles.maxlen - len(candles_info['candles']._candles)}"
+                )
                 pass
             else:
                 df = candles_info["candles"].candles_df
