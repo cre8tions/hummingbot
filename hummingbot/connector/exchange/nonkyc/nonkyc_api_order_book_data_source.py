@@ -14,13 +14,13 @@ from hummingbot.core.data_type.order_book_row import OrderBookRow
 from hummingbot.core.data_type.order_book_tracker_data_source import OrderBookTrackerDataSource
 from hummingbot.logger import HummingbotLogger
 
-from .nokyc_constants import Constants
-from .nokyc_order_book import NoKYCOrderBook
-from .nokyc_utils import NoKYCAPIError, api_call_with_retries, str_date_to_ts
-from .nokyc_websocket import NoKYCWebsocket
+from .nonkyc_constants import Constants
+from .nonkyc_order_book import NonKYCOrderBook
+from .nonkyc_utils import NonKYCAPIError, api_call_with_retries, str_date_to_ts
+from .nonkyc_websocket import NonKYCWebsocket
 
 
-class NoKYCAPIOrderBookDataSource(OrderBookTrackerDataSource):
+class NonKYCAPIOrderBookDataSource(OrderBookTrackerDataSource):
     _logger: Optional[HummingbotLogger] = None
     _trading_pair_symbol_map: Dict[str, str] = {}
 
@@ -60,7 +60,7 @@ class NoKYCAPIOrderBookDataSource(OrderBookTrackerDataSource):
         if len(trading_pairs) > 1:
             tickers: List[Dict[Any]] = await api_call_with_retries("GET", Constants.ENDPOINT["TICKER"])
         for trading_pair in trading_pairs:
-            ex_pair: str = await NoKYCAPIOrderBookDataSource.exchange_symbol_associated_to_pair(trading_pair)
+            ex_pair: str = await NonKYCAPIOrderBookDataSource.exchange_symbol_associated_to_pair(trading_pair)
             if len(trading_pairs) > 1:
                 ticker: Dict[Any] = list([tic for tic in tickers if tic["symbol"] == ex_pair])[0]
             else:
@@ -71,7 +71,7 @@ class NoKYCAPIOrderBookDataSource(OrderBookTrackerDataSource):
 
     @staticmethod
     async def exchange_symbol_associated_to_pair(trading_pair: str) -> str:
-        symbol_map = await NoKYCAPIOrderBookDataSource.trading_pair_symbol_map()
+        symbol_map = await NonKYCAPIOrderBookDataSource.trading_pair_symbol_map()
         symbols = [symbol for symbol, pair in symbol_map.items() if pair == trading_pair]
 
         if symbols:
@@ -83,12 +83,12 @@ class NoKYCAPIOrderBookDataSource(OrderBookTrackerDataSource):
 
     @staticmethod
     async def trading_pair_associated_to_exchange_symbol(symbol: str) -> str:
-        symbol_map = await NoKYCAPIOrderBookDataSource.trading_pair_symbol_map()
+        symbol_map = await NonKYCAPIOrderBookDataSource.trading_pair_symbol_map()
         return symbol_map[symbol]
 
     @staticmethod
     async def fetch_trading_pairs() -> List[str]:
-        symbols_map = await NoKYCAPIOrderBookDataSource.trading_pair_symbol_map()
+        symbols_map = await NonKYCAPIOrderBookDataSource.trading_pair_symbol_map()
         return list(symbols_map.values())
 
     @staticmethod
@@ -97,12 +97,12 @@ class NoKYCAPIOrderBookDataSource(OrderBookTrackerDataSource):
         Get whole orderbook
         """
         try:
-            ex_pair = await NoKYCAPIOrderBookDataSource.exchange_symbol_associated_to_pair(trading_pair)
+            ex_pair = await NonKYCAPIOrderBookDataSource.exchange_symbol_associated_to_pair(trading_pair)
             orderbook_response: Dict[Any] = await api_call_with_retries(
                 "GET", Constants.ENDPOINT["ORDER_BOOK"], params={"depth": 150, "ticker_id": ex_pair}
             )
             return orderbook_response
-        except NoKYCAPIError as e:
+        except NonKYCAPIError as e:
             err = e.error_payload.get("error", e.error_payload)
             raise IOError(
                 f"Error fetching OrderBook for {trading_pair} at {Constants.EXCHANGE_NAME}. "
@@ -112,7 +112,7 @@ class NoKYCAPIOrderBookDataSource(OrderBookTrackerDataSource):
     async def get_new_order_book(self, trading_pair: str) -> OrderBook:
         snapshot: Dict[str, Any] = await self.get_order_book_data(trading_pair)
         snapshot_timestamp: float = time.time()
-        snapshot_msg: OrderBookMessage = NoKYCOrderBook.snapshot_message_from_exchange(
+        snapshot_msg: OrderBookMessage = NonKYCOrderBook.snapshot_message_from_exchange(
             snapshot, snapshot_timestamp, metadata={"trading_pair": trading_pair}
         )
         order_book = self.order_book_create_function()
@@ -147,11 +147,11 @@ class NoKYCAPIOrderBookDataSource(OrderBookTrackerDataSource):
         """
         while True:
             try:
-                ws = NoKYCWebsocket()
+                ws = NonKYCWebsocket()
                 await ws.connect()
 
                 for pair in self._trading_pairs:
-                    symbol = await NoKYCAPIOrderBookDataSource.exchange_symbol_associated_to_pair(pair)
+                    symbol = await NonKYCAPIOrderBookDataSource.exchange_symbol_associated_to_pair(pair)
                     await ws.subscribe(Constants.WS_SUB["TRADES"], symbol)
 
                 async for response in ws.on_message():
@@ -166,7 +166,7 @@ class NoKYCAPIOrderBookDataSource(OrderBookTrackerDataSource):
                     for trade in trades_data["data"]:
                         trade: Dict[Any] = trade
                         trade_timestamp: int = str_date_to_ts(trade["timestamp"])
-                        trade_msg: OrderBookMessage = NoKYCOrderBook.trade_message_from_exchange(
+                        trade_msg: OrderBookMessage = NonKYCOrderBook.trade_message_from_exchange(
                             trade, trade_timestamp, metadata={"trading_pair": pair}
                         )
                         output.put_nowait(trade_msg)
@@ -185,7 +185,7 @@ class NoKYCAPIOrderBookDataSource(OrderBookTrackerDataSource):
         """
         while True:
             try:
-                ws = NoKYCWebsocket()
+                ws = NonKYCWebsocket()
                 await ws.connect()
 
                 order_book_methods = [
@@ -194,7 +194,7 @@ class NoKYCAPIOrderBookDataSource(OrderBookTrackerDataSource):
                 ]
 
                 for pair in self._trading_pairs:
-                    symbol = await NoKYCAPIOrderBookDataSource.exchange_symbol_associated_to_pair(pair)
+                    symbol = await NonKYCAPIOrderBookDataSource.exchange_symbol_associated_to_pair(pair)
                     await ws.subscribe(Constants.WS_SUB["ORDERS"], symbol)
 
                 async for response in ws.on_message():
@@ -208,9 +208,9 @@ class NoKYCAPIOrderBookDataSource(OrderBookTrackerDataSource):
                     pair: str = await self.trading_pair_associated_to_exchange_symbol(order_book_data["symbol"])
 
                     order_book_msg_cls = (
-                        NoKYCOrderBook.diff_message_from_exchange
+                        NonKYCOrderBook.diff_message_from_exchange
                         if method == Constants.WS_METHODS["ORDERS_UPDATE"]
-                        else NoKYCOrderBook.snapshot_message_from_exchange
+                        else NonKYCOrderBook.snapshot_message_from_exchange
                     )
 
                     orderbook_msg: OrderBookMessage = order_book_msg_cls(
@@ -241,7 +241,7 @@ class NoKYCAPIOrderBookDataSource(OrderBookTrackerDataSource):
                     try:
                         snapshot: Dict[str, any] = await self.get_order_book_data(trading_pair)
                         snapshot_timestamp: int = snapshot["timestamp"]
-                        snapshot_msg: OrderBookMessage = NoKYCOrderBook.snapshot_message_from_exchange(
+                        snapshot_msg: OrderBookMessage = NonKYCOrderBook.snapshot_message_from_exchange(
                             snapshot, snapshot_timestamp, metadata={"trading_pair": trading_pair}
                         )
                         output.put_nowait(snapshot_msg)

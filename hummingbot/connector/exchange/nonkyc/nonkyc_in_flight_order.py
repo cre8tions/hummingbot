@@ -8,7 +8,7 @@ from hummingbot.core.data_type.common import OrderType, TradeType
 s_decimal_0 = Decimal(0)
 
 
-class NoKYCInFlightOrder(InFlightOrderBase):
+class NonKYCInFlightOrder(InFlightOrderBase):
     def __init__(self,
                  client_order_id: str,
                  exchange_order_id: Optional[str],

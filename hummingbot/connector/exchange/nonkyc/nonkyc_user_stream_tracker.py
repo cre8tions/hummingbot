@@ -1,16 +1,16 @@
 import logging
 from typing import List, Optional
 
-from hummingbot.connector.exchange.nokyc.nokyc_api_user_stream_data_source import NoKYCAPIUserStreamDataSource
-from hummingbot.connector.exchange.nokyc.nokyc_auth import NoKYCAuth
-from hummingbot.connector.exchange.nokyc.nokyc_constants import Constants
+from hummingbot.connector.exchange.nonkyc.nonkyc_api_user_stream_data_source import NonKYCAPIUserStreamDataSource
+from hummingbot.connector.exchange.nonkyc.nonkyc_auth import NonKYCAuth
+from hummingbot.connector.exchange.nonkyc.nonkyc_constants import Constants
 from hummingbot.core.data_type.user_stream_tracker import UserStreamTracker
 from hummingbot.core.data_type.user_stream_tracker_data_source import UserStreamTrackerDataSource
 from hummingbot.core.utils.async_utils import safe_ensure_future, safe_gather
 from hummingbot.logger import HummingbotLogger
 
 
-class NoKYCUserStreamTracker(UserStreamTracker):
+class NonKYCUserStreamTracker(UserStreamTracker):
     _cbpust_logger: Optional[HummingbotLogger] = None
 
     @classmethod
@@ -19,11 +19,11 @@ class NoKYCUserStreamTracker(UserStreamTracker):
             cls._bust_logger = logging.getLogger(__name__)
         return cls._bust_logger
 
-    def __init__(self, nokyc_auth: Optional[NoKYCAuth] = None, trading_pairs: Optional[List[str]] = None):
-        self._nokyc_auth: NoKYCAuth = nokyc_auth
+    def __init__(self, nonkyc_auth: Optional[NonKYCAuth] = None, trading_pairs: Optional[List[str]] = None):
+        self._nonkyc_auth: NonKYCAuth = nonkyc_auth
         self._trading_pairs: List[str] = trading_pairs or []
         super().__init__(
-            data_source=NoKYCAPIUserStreamDataSource(nokyc_auth=self._nokyc_auth, trading_pairs=self._trading_pairs)
+            data_source=NonKYCAPIUserStreamDataSource(nonkyc_auth=self._nonkyc_auth, trading_pairs=self._trading_pairs)
         )
 
     @property
@@ -34,8 +34,8 @@ class NoKYCUserStreamTracker(UserStreamTracker):
         :return: OrderBookTrackerDataSource
         """
         if not self._data_source:
-            self._data_source = NoKYCAPIUserStreamDataSource(
-                nokyc_auth=self._nokyc_auth, trading_pairs=self._trading_pairs
+            self._data_source = NonKYCAPIUserStreamDataSource(
+                nonkyc_auth=self._nonkyc_auth, trading_pairs=self._trading_pairs
             )
         return self._data_source
 

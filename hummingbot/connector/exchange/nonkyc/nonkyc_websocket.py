@@ -8,16 +8,16 @@ from typing import Any, AsyncIterable, Dict, Optional
 import websockets
 from websockets.exceptions import ConnectionClosed
 
-from hummingbot.connector.exchange.nokyc.nokyc_auth import NoKYCAuth
-from hummingbot.connector.exchange.nokyc.nokyc_constants import Constants
-from hummingbot.connector.exchange.nokyc.nokyc_utils import NoKYCAPIError, RequestId
+from hummingbot.connector.exchange.nonkyc.nonkyc_auth import NonKYCAuth
+from hummingbot.connector.exchange.nonkyc.nonkyc_constants import Constants
+from hummingbot.connector.exchange.nonkyc.nonkyc_utils import NonKYCAPIError, RequestId
 from hummingbot.logger import HummingbotLogger
 
 # reusable websocket class
 # ToDo: We should eventually remove this class, and instantiate web socket connection normally (see Binance for example)
 
 
-class NoKYCWebsocket(RequestId):
+class NonKYCWebsocket(RequestId):
     _logger: Optional[HummingbotLogger] = None
 
     @classmethod
@@ -26,8 +26,8 @@ class NoKYCWebsocket(RequestId):
             cls._logger = logging.getLogger(__name__)
         return cls._logger
 
-    def __init__(self, auth: Optional[NoKYCAuth] = None):
-        self._auth: Optional[NoKYCAuth] = auth
+    def __init__(self, auth: Optional[NonKYCAuth] = None):
+        self._auth: Optional[NonKYCAuth] = auth
         self._isPrivate = True if self._auth is not None else False
         self._WS_URL = Constants.WS_PRIVATE_URL if self._isPrivate else Constants.WS_PUBLIC_URL
         self._client: Optional[websockets.WebSocketClientProtocol] = None
@@ -45,7 +45,7 @@ class NoKYCWebsocket(RequestId):
             json_msg = json.loads(raw_msg_str)
             if json_msg.get("result") is not True:
                 err_msg = json_msg.get("error", {}).get("message")
-                raise NoKYCAPIError({"error": f"Failed to authenticate to websocket - {err_msg}."})
+                raise NonKYCAPIError({"error": f"Failed to authenticate to websocket - {err_msg}."})
 
         return self._client
 

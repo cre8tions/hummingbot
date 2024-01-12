@@ -8,10 +8,10 @@ from typing import Deque, Dict, List, Optional
 
 import numpy as np
 
-from hummingbot.connector.exchange.nokyc.nokyc_api_order_book_data_source import NoKYCAPIOrderBookDataSource
-from hummingbot.connector.exchange.nokyc.nokyc_constants import Constants
-from hummingbot.connector.exchange.nokyc.nokyc_order_book import NoKYCOrderBook
-from hummingbot.connector.exchange.nokyc.nokyc_order_book_message import NoKYCOrderBookMessage
+from hummingbot.connector.exchange.nonkyc.nonkyc_api_order_book_data_source import NonKYCAPIOrderBookDataSource
+from hummingbot.connector.exchange.nonkyc.nonkyc_constants import Constants
+from hummingbot.connector.exchange.nonkyc.nonkyc_order_book import NonKYCOrderBook
+from hummingbot.connector.exchange.nonkyc.nonkyc_order_book_message import NonKYCOrderBookMessage
 from hummingbot.core.data_type.order_book_message import OrderBookMessageType
 from hummingbot.core.data_type.order_book_row import OrderBookRow
 from hummingbot.core.data_type.order_book_tracker import OrderBookTracker
@@ -20,7 +20,7 @@ from hummingbot.logger import HummingbotLogger
 s_empty_diff = np.ndarray(shape=(0, 4), dtype="float64")
 
 
-class NoKYCOrderBookTracker(OrderBookTracker):
+class NonKYCOrderBookTracker(OrderBookTracker):
     _logger: Optional[HummingbotLogger] = None
 
     @classmethod
@@ -33,7 +33,7 @@ class NoKYCOrderBookTracker(OrderBookTracker):
         self,
         trading_pairs: Optional[List[str]] = None,
     ):
-        super().__init__(NoKYCAPIOrderBookDataSource(trading_pairs), trading_pairs)
+        super().__init__(NonKYCAPIOrderBookDataSource(trading_pairs), trading_pairs)
 
         self._ev_loop: asyncio.BaseEventLoop = asyncio.get_event_loop()
         self._order_book_snapshot_stream: asyncio.Queue = asyncio.Queue()
@@ -41,8 +41,8 @@ class NoKYCOrderBookTracker(OrderBookTracker):
         self._order_book_trade_stream: asyncio.Queue = asyncio.Queue()
         self._process_msg_deque_task: Optional[asyncio.Task] = None
         self._past_diffs_windows: Dict[str, Deque] = {}
-        self._order_books: Dict[str, NoKYCOrderBook] = {}
-        self._saved_message_queues: Dict[str, Deque[NoKYCOrderBookMessage]] = defaultdict(lambda: deque(maxlen=1000))
+        self._order_books: Dict[str, NonKYCOrderBook] = {}
+        self._saved_message_queues: Dict[str, Deque[NonKYCOrderBookMessage]] = defaultdict(lambda: deque(maxlen=1000))
         self._order_book_stream_listener_task: Optional[asyncio.Task] = None
         self._order_book_trade_listener_task: Optional[asyncio.Task] = None
 
@@ -57,19 +57,19 @@ class NoKYCOrderBookTracker(OrderBookTracker):
         """
         Update an order book with changes from the latest batch of received messages
         """
-        past_diffs_window: Deque[NoKYCOrderBookMessage] = deque()
+        past_diffs_window: Deque[NonKYCOrderBookMessage] = deque()
         self._past_diffs_windows[trading_pair] = past_diffs_window
 
         message_queue: asyncio.Queue = self._tracking_message_queues[trading_pair]
-        order_book: NoKYCOrderBook = self._order_books[trading_pair]
+        order_book: NonKYCOrderBook = self._order_books[trading_pair]
 
         last_message_timestamp: float = time.time()
         diff_messages_accepted: int = 0
 
         while True:
             try:
-                message: NoKYCOrderBookMessage = None
-                saved_messages: Deque[NoKYCOrderBookMessage] = self._saved_message_queues[trading_pair]
+                message: NonKYCOrderBookMessage = None
+                saved_messages: Deque[NonKYCOrderBookMessage] = self._saved_message_queues[trading_pair]
                 # Process saved messages first if there are any
                 if len(saved_messages) > 0:
                     message = saved_messages.popleft()
@@ -137,7 +137,7 @@ class NoKYCOrderBookTracker(OrderBookTracker):
                         diff_messages_accepted = 0
                     last_message_timestamp = now
                 elif message.type is OrderBookMessageType.SNAPSHOT:
-                    past_diffs: List[NoKYCOrderBookMessage] = list(past_diffs_window)
+                    past_diffs: List[NonKYCOrderBookMessage] = list(past_diffs_window)
                     # only replay diffs later than snapshot, first update active order with snapshot then replay diffs
                     replay_position = bisect.bisect_right(past_diffs, message)
                     replay_diffs = past_diffs[replay_position:]

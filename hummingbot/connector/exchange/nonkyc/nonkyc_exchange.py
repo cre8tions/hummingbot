@@ -9,14 +9,14 @@ from typing import TYPE_CHECKING, Any, AsyncIterable, Dict, List, Optional
 import aiohttp
 from async_timeout import timeout
 
-from hummingbot.connector.exchange.nokyc.nokyc_api_order_book_data_source import NoKYCAPIOrderBookDataSource
-from hummingbot.connector.exchange.nokyc.nokyc_auth import NoKYCAuth
-from hummingbot.connector.exchange.nokyc.nokyc_constants import Constants
-from hummingbot.connector.exchange.nokyc.nokyc_in_flight_order import NoKYCInFlightOrder
-from hummingbot.connector.exchange.nokyc.nokyc_order_book_tracker import NoKYCOrderBookTracker
-from hummingbot.connector.exchange.nokyc.nokyc_user_stream_tracker import NoKYCUserStreamTracker
-from hummingbot.connector.exchange.nokyc.nokyc_utils import (
-    NoKYCAPIError,
+from hummingbot.connector.exchange.nonkyc.nonkyc_api_order_book_data_source import NonKYCAPIOrderBookDataSource
+from hummingbot.connector.exchange.nonkyc.nonkyc_auth import NonKYCAuth
+from hummingbot.connector.exchange.nonkyc.nonkyc_constants import Constants
+from hummingbot.connector.exchange.nonkyc.nonkyc_in_flight_order import NonKYCInFlightOrder
+from hummingbot.connector.exchange.nonkyc.nonkyc_order_book_tracker import NonKYCOrderBookTracker
+from hummingbot.connector.exchange.nonkyc.nonkyc_user_stream_tracker import NonKYCUserStreamTracker
+from hummingbot.connector.exchange.nonkyc.nonkyc_utils import (
+    NonKYCAPIError,
     aiohttp_response_with_errors,
     get_new_client_order_id,
     retry_sleep_time,
@@ -52,9 +52,9 @@ ctce_logger = None
 s_decimal_NaN = Decimal("nan")
 
 
-class NokycExchange(ExchangeBase):
+class NonkycExchange(ExchangeBase):
     """
-    NokycExchange connects with NoKYC exchange and provides order book pricing, user account tracking and
+    NonkycExchange connects with NonKYC exchange and provides order book pricing, user account tracking and
     trading functionality.
     """
 
@@ -71,14 +71,14 @@ class NokycExchange(ExchangeBase):
     def __init__(
         self,
         client_config_map: "ClientConfigAdapter",
-        nokyc_api_key: str,
-        nokyc_secret_key: str,
+        nonkyc_api_key: str,
+        nonkyc_secret_key: str,
         trading_pairs: Optional[List[str]] = None,
         trading_required: bool = True,
     ):
         """
-        :param nokyc_api_key: The API key to connect to private NoKYC APIs.
-        :param nokyc_secret_key: The API secret.
+        :param nonkyc_api_key: The API key to connect to private NonKYC APIs.
+        :param nonkyc_secret_key: The API secret.
         :param trading_pairs: The market trading pairs which to track order book data.
         :param trading_required: Whether actual trading is needed.
         """
@@ -86,14 +86,14 @@ class NokycExchange(ExchangeBase):
         self._trading_required = trading_required
         self._trading_pairs = trading_pairs
         self._time_synchronizer = TimeSynchronizer()
-        self._nokyc_auth = NoKYCAuth(nokyc_api_key, nokyc_secret_key, time_provider=self._time_synchronizer)
-        self._set_order_book_tracker(NoKYCOrderBookTracker(trading_pairs=trading_pairs))
-        self._user_stream_tracker = NoKYCUserStreamTracker(self._nokyc_auth, trading_pairs)
+        self._nonkyc_auth = NonKYCAuth(nonkyc_api_key, nonkyc_secret_key, time_provider=self._time_synchronizer)
+        self._set_order_book_tracker(NonKYCOrderBookTracker(trading_pairs=trading_pairs))
+        self._user_stream_tracker = NonKYCUserStreamTracker(self._nonkyc_auth, trading_pairs)
         self._ev_loop = asyncio.get_event_loop()
         self._shared_client = None
         self._poll_notifier = asyncio.Event()
         self._last_timestamp = 0
-        self._in_flight_orders = {}  # Dict[client_order_id:str, NoKYCInFlightOrder]
+        self._in_flight_orders = {}  # Dict[client_order_id:str, NonKYCInFlightOrder]
         self._order_not_found_records = {}  # Dict[client_order_id:str, count:int]
         self._trading_rules = {}  # Dict[trading_pair:str, TradingRule]
         self._status_polling_task = None
@@ -103,7 +103,7 @@ class NokycExchange(ExchangeBase):
 
     @property
     def name(self) -> str:
-        return "nokyc"
+        return "nonkyc"
 
     @property
     def order_books(self) -> Dict[str, OrderBook]:
@@ -114,7 +114,7 @@ class NokycExchange(ExchangeBase):
         return self._trading_rules
 
     @property
-    def in_flight_orders(self) -> Dict[str, NoKYCInFlightOrder]:
+    def in_flight_orders(self) -> Dict[str, NonKYCInFlightOrder]:
         return self._in_flight_orders
 
     @property
@@ -156,7 +156,7 @@ class NokycExchange(ExchangeBase):
         when it disconnects.
         :param saved_states: The saved tracking_states.
         """
-        self._in_flight_orders.update({key: NoKYCInFlightOrder.from_json(value) for key, value in saved_states.items()})
+        self._in_flight_orders.update({key: NonKYCInFlightOrder.from_json(value) for key, value in saved_states.items()})
 
     def supported_order_types(self) -> List[OrderType]:
         """
@@ -268,7 +268,7 @@ class NokycExchange(ExchangeBase):
         result = {}
         for rule in symbols_info:
             try:
-                trading_pair = await NoKYCAPIOrderBookDataSource.trading_pair_associated_to_exchange_symbol(
+                trading_pair = await NonKYCAPIOrderBookDataSource.trading_pair_associated_to_exchange_symbol(
                     rule["symbol"]
                 )
                 price_step = Decimal(1) / 10 ** Decimal(str(rule["priceDecimals"]))
@@ -317,7 +317,7 @@ class NokycExchange(ExchangeBase):
         # Generate auth headers if needed.
         headers: dict = {}
         if is_auth_required:
-            headers: dict = self._nokyc_auth.get_headers(method, f"{Constants.REST_URL}/{endpoint}", params)
+            headers: dict = self._nonkyc_auth.get_headers(method, f"{Constants.REST_URL}/{endpoint}", params)
         # Build request coro
         response_coro = shared_client.request(
             method=method.upper(),
@@ -344,9 +344,9 @@ class NokycExchange(ExchangeBase):
                     try_count=try_count,
                 )
             else:
-                raise NoKYCAPIError({"error": parsed_response, "status": http_status})
+                raise NonKYCAPIError({"error": parsed_response, "status": http_status})
         if "error" in parsed_response:
-            raise NoKYCAPIError(parsed_response)
+            raise NonKYCAPIError(parsed_response)
         return parsed_response
 
     def get_order_price_quantum(self, trading_pair: str, price: Decimal):
@@ -439,7 +439,7 @@ class NokycExchange(ExchangeBase):
                 f"Buy order amount {amount} is lower than the minimum order size " f"{trading_rule.min_order_size}."
             )
         order_type_str = order_type.name.lower().split("_")[0]
-        symbol = await NoKYCAPIOrderBookDataSource.exchange_symbol_associated_to_pair(trading_pair)
+        symbol = await NonKYCAPIOrderBookDataSource.exchange_symbol_associated_to_pair(trading_pair)
         api_params = {
             "symbol": symbol,
             "side": trade_type.name.lower(),
@@ -480,7 +480,7 @@ class NokycExchange(ExchangeBase):
             )
         except asyncio.CancelledError:
             raise
-        except NoKYCAPIError as e:
+        except NonKYCAPIError as e:
             error_reason = e.error_payload.get("error", {}).get("message")
             self.stop_tracking_order(order_id)
             self.logger().network(
@@ -506,7 +506,7 @@ class NokycExchange(ExchangeBase):
         """
         Starts tracking an order by simply adding it into _in_flight_orders dictionary.
         """
-        self._in_flight_orders[order_id] = NoKYCInFlightOrder(
+        self._in_flight_orders[order_id] = NonKYCInFlightOrder(
             client_order_id=order_id,
             exchange_order_id=exchange_order_id,
             trading_pair=trading_pair,
@@ -530,7 +530,7 @@ class NokycExchange(ExchangeBase):
         """
         Executes order cancellation process by first calling cancel-order API. The API result doesn't confirm whether
         the cancellation is successful, it simply states it receives the request.
-        :param trading_pair: The market trading pair (Unused during cancel on NoKYC)
+        :param trading_pair: The market trading pair (Unused during cancel on NonKYC)
         :param order_id: The internal order id
         order.last_state to change to CANCELED
         """
@@ -544,7 +544,7 @@ class NokycExchange(ExchangeBase):
             order_was_cancelled = True
         except asyncio.CancelledError:
             raise
-        except NoKYCAPIError as e:
+        except NonKYCAPIError as e:
             err = e.error_payload.get("error", e.error_payload)
             self._order_not_found_records[order_id] = self._order_not_found_records.get(order_id, 0) + 1
             if (
@@ -623,7 +623,7 @@ class NokycExchange(ExchangeBase):
             responses = await safe_gather(*tasks, return_exceptions=True)
             for response, tracked_order in zip(responses, tracked_orders):
                 client_order_id = tracked_order.client_order_id
-                if isinstance(response, NoKYCAPIError):
+                if isinstance(response, NonKYCAPIError):
                     err = response.error_payload.get("error", response.error_payload)
                     if err.get("code") == 20002:
                         self._order_not_found_records[client_order_id] = (
@@ -877,7 +877,7 @@ class NokycExchange(ExchangeBase):
     async def _user_stream_event_listener(self):
         """
         Listens to message in _user_stream_tracker.user_stream queue. The messages are put in by
-        NoKYCAPIUserStreamDataSource.
+        NonKYCAPIUserStreamDataSource.
         """
         async for event_message in self._iter_user_event_queue():
             try:
@@ -915,7 +915,7 @@ class NokycExchange(ExchangeBase):
             if order["type"] != OrderType.LIMIT.name.lower():
                 self.logger().info(f"Unsupported order type found: {order['type']}")
                 continue
-            trading_pair = await NoKYCAPIOrderBookDataSource.trading_pair_associated_to_exchange_symbol(order["symbol"])
+            trading_pair = await NonKYCAPIOrderBookDataSource.trading_pair_associated_to_exchange_symbol(order["symbol"])
             ret_val.append(
                 OpenOrder(
                     client_order_id=order["userProvidedId"],
@@ -934,8 +934,8 @@ class NokycExchange(ExchangeBase):
 
     async def all_trading_pairs(self) -> List[str]:
         # This method should be removed and instead we should implement _initialize_trading_pair_symbol_map
-        return await NoKYCAPIOrderBookDataSource.fetch_trading_pairs()
+        return await NonKYCAPIOrderBookDataSource.fetch_trading_pairs()
 
     async def get_last_traded_prices(self, trading_pairs: List[str]) -> Dict[str, float]:
         # This method should be removed and instead we should implement _get_last_traded_price
-        return await NoKYCAPIOrderBookDataSource.get_last_traded_prices(trading_pairs=trading_pairs)
+        return await NonKYCAPIOrderBookDataSource.get_last_traded_prices(trading_pairs=trading_pairs)

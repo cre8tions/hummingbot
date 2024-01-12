@@ -11,9 +11,9 @@ from hummingbot.logger import HummingbotLogger
 ctce_logger = None
 
 
-class NoKYCAuth():
+class NonKYCAuth():
     """
-    Auth class required by NoKYC API
+    Auth class required by NonKYC API
     Learn more at https://exchange-docs.crypto.com/#digital-signature
     """
 
@@ -63,7 +63,7 @@ class NoKYCAuth():
     def generate_auth_dict_ws(self,
                               nonce: int):
         """
-        Generates an authentication params for NoKYC websockets login
+        Generates an authentication params for NonKYC websockets login
         :return: a dictionary of auth params
         """
         return {
@@ -80,7 +80,7 @@ class NoKYCAuth():
                     url,
                     params) -> Dict[str, Any]:
         """
-        Generates authentication headers required by NoKYC
+        Generates authentication headers required by NonKYC
         :return: a dictionary of auth headers
         """
         noncetime = int(self.time_provider.time() * 1e3)

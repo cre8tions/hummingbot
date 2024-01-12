@@ -7,13 +7,13 @@ from typing import Any, AsyncIterable, List, Optional
 from hummingbot.core.data_type.user_stream_tracker_data_source import UserStreamTrackerDataSource
 from hummingbot.logger import HummingbotLogger
 
-from .nokyc_auth import NoKYCAuth
-from .nokyc_constants import Constants
-from .nokyc_utils import NoKYCAPIError
-from .nokyc_websocket import NoKYCWebsocket
+from .nonkyc_auth import NonKYCAuth
+from .nonkyc_constants import Constants
+from .nonkyc_utils import NonKYCAPIError
+from .nonkyc_websocket import NonKYCWebsocket
 
 
-class NoKYCAPIUserStreamDataSource(UserStreamTrackerDataSource):
+class NonKYCAPIUserStreamDataSource(UserStreamTrackerDataSource):
     _logger: Optional[HummingbotLogger] = None
 
     @classmethod
@@ -22,9 +22,9 @@ class NoKYCAPIUserStreamDataSource(UserStreamTrackerDataSource):
             cls._logger = logging.getLogger(__name__)
         return cls._logger
 
-    def __init__(self, nokyc_auth: NoKYCAuth, trading_pairs: Optional[List[str]] = []):
-        self._nokyc_auth: NoKYCAuth = nokyc_auth
-        self._ws: NoKYCWebsocket = None
+    def __init__(self, nonkyc_auth: NonKYCAuth, trading_pairs: Optional[List[str]] = []):
+        self._nonkyc_auth: NonKYCAuth = nonkyc_auth
+        self._ws: NonKYCWebsocket = None
         self._trading_pairs = trading_pairs
         self._current_listen_key = None
         self._listen_for_user_stream_task = None
@@ -44,7 +44,7 @@ class NoKYCAPIUserStreamDataSource(UserStreamTrackerDataSource):
         """
 
         try:
-            self._ws = NoKYCWebsocket(self._nokyc_auth)
+            self._ws = NonKYCWebsocket(self._nonkyc_auth)
 
             await self._ws.connect()
 
@@ -82,7 +82,7 @@ class NoKYCAPIUserStreamDataSource(UserStreamTrackerDataSource):
                     output.put_nowait(msg)
             except asyncio.CancelledError:
                 raise
-            except NoKYCAPIError as e:
+            except NonKYCAPIError as e:
                 self.logger().error(e.error_payload.get("error"), exc_info=True)
                 raise
             except Exception:

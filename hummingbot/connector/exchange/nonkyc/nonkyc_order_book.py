@@ -1,8 +1,8 @@
 import logging
 from typing import Any, Dict, List, Optional
 
-from hummingbot.connector.exchange.nokyc.nokyc_constants import Constants
-from hummingbot.connector.exchange.nokyc.nokyc_order_book_message import NoKYCOrderBookMessage
+from hummingbot.connector.exchange.nonkyc.nonkyc_constants import Constants
+from hummingbot.connector.exchange.nonkyc.nonkyc_order_book_message import NonKYCOrderBookMessage
 from hummingbot.core.data_type.order_book import OrderBook
 from hummingbot.core.data_type.order_book_message import OrderBookMessage, OrderBookMessageType
 from hummingbot.logger import HummingbotLogger
@@ -10,7 +10,7 @@ from hummingbot.logger import HummingbotLogger
 _logger = None
 
 
-class NoKYCOrderBook(OrderBook):
+class NonKYCOrderBook(OrderBook):
     @classmethod
     def logger(cls) -> HummingbotLogger:
         global _logger
@@ -24,13 +24,13 @@ class NoKYCOrderBook(OrderBook):
         Convert json snapshot data into standard OrderBookMessage format
         :param msg: json snapshot data from live web socket stream
         :param timestamp: timestamp attached to incoming data
-        :return: NoKYCOrderBookMessage
+        :return: NonKYCOrderBookMessage
         """
 
         if metadata:
             msg.update(metadata)
 
-        return NoKYCOrderBookMessage(message_type=OrderBookMessageType.SNAPSHOT, content=msg, timestamp=timestamp)
+        return NonKYCOrderBookMessage(message_type=OrderBookMessageType.SNAPSHOT, content=msg, timestamp=timestamp)
 
     @classmethod
     def diff_message_from_exchange(
@@ -40,13 +40,13 @@ class NoKYCOrderBook(OrderBook):
         Convert json diff data into standard OrderBookMessage format
         :param msg: json diff data from live web socket stream
         :param timestamp: timestamp attached to incoming data
-        :return: NoKYCOrderBookMessage
+        :return: NonKYCOrderBookMessage
         """
 
         if metadata:
             msg.update(metadata)
 
-        return NoKYCOrderBookMessage(message_type=OrderBookMessageType.DIFF, content=msg, timestamp=timestamp)
+        return NonKYCOrderBookMessage(message_type=OrderBookMessageType.DIFF, content=msg, timestamp=timestamp)
 
     @classmethod
     def trade_message_from_exchange(
@@ -55,7 +55,7 @@ class NoKYCOrderBook(OrderBook):
         """
         Convert a trade data into standard OrderBookMessage format
         :param record: a trade data from the database
-        :return: NoKYCOrderBookMessage
+        :return: NonKYCOrderBookMessage
         """
 
         if metadata:
@@ -70,7 +70,7 @@ class NoKYCOrderBook(OrderBook):
             }
         )
 
-        return NoKYCOrderBookMessage(message_type=OrderBookMessageType.TRADE, content=msg, timestamp=timestamp)
+        return NonKYCOrderBookMessage(message_type=OrderBookMessageType.TRADE, content=msg, timestamp=timestamp)
 
     @classmethod
     def from_snapshot(cls, snapshot: OrderBookMessage):

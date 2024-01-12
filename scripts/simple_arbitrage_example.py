@@ -25,7 +25,7 @@ class SimpleArbitrage(ScriptStrategyBase):
     quote = "USDT"
     trading_pair = f"{base}-{quote}"
     exchange_A = "xeggex"
-    exchange_B = "nokyc"
+    exchange_B = "nonkyc"
 
     markets = {exchange_A: {trading_pair},
                exchange_B: {trading_pair}}

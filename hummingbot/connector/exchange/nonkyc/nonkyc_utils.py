@@ -9,7 +9,7 @@ from pydantic import Field, SecretStr
 from hummingbot.client.config.config_data_types import BaseConnectorConfigMap, ClientFieldData
 from hummingbot.core.utils.tracking_nonce import get_tracking_nonce
 
-from .nokyc_constants import Constants
+from .nonkyc_constants import Constants
 
 CENTRALIZED = True
 
@@ -18,7 +18,7 @@ EXAMPLE_PAIR = "BTC_USDT"
 DEFAULT_FEES = [0.1, 0.1]
 
 
-class NoKYCAPIError(IOError):
+class NonKYCAPIError(IOError):
     def __init__(self, error_payload: Dict[str, Any]):
         super().__init__(str(error_payload))
         self.error_payload = error_payload
@@ -116,13 +116,13 @@ async def api_call_with_retries(
                 method=method, endpoint=endpoint, params=params, shared_client=shared_client, try_count=try_count
             )
         else:
-            raise NoKYCAPIError({"error": parsed_response, "status": http_status})
+            raise NonKYCAPIError({"error": parsed_response, "status": http_status})
     return parsed_response
 
 
-class NoKYCConfigMap(BaseConnectorConfigMap):
-    connector: str = Field(default="nokyc", client_data=None)
-    nokyc_api_key: SecretStr = Field(
+class NonKYCConfigMap(BaseConnectorConfigMap):
+    connector: str = Field(default="nonkyc", client_data=None)
+    nonkyc_api_key: SecretStr = Field(
         default=...,
         client_data=ClientFieldData(
             prompt=lambda cm: f"Enter your {Constants.EXCHANGE_NAME} API key",
@@ -131,7 +131,7 @@ class NoKYCConfigMap(BaseConnectorConfigMap):
             prompt_on_new=True,
         ),
     )
-    nokyc_secret_key: SecretStr = Field(
+    nonkyc_secret_key: SecretStr = Field(
         default=...,
         client_data=ClientFieldData(
             prompt=lambda cm: f"Enter your {Constants.EXCHANGE_NAME} secret key",
@@ -142,7 +142,7 @@ class NoKYCConfigMap(BaseConnectorConfigMap):
     )
 
     class Config:
-        title = "nokyc"
+        title = "nonkyc"
 
 
-KEYS = NoKYCConfigMap.construct()
+KEYS = NonKYCConfigMap.construct()
