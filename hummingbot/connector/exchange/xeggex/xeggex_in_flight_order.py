@@ -82,8 +82,7 @@ class XeggexInFlightOrder(InFlightOrderBase):
             return False
         self.trade_id_set.add(trade_id)
         self.fee_paid += Decimal(str(trade_update.get("tradeFee", "0")))
-        self.executed_amount_quote += (Decimal(str(trade_update.get("tradePrice", "0"))) *
-                                       Decimal(str(trade_update.get("tradeQuantity", "0"))))
+        self.executed_amount_quote += (Decimal(str(trade_update.get("tradePrice", "0"))) * Decimal(str(trade_update.get("tradeQuantity", "0"))))
         if not self.fee_asset:
             self.fee_asset = self.quote_asset
         return True

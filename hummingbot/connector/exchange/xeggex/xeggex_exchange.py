@@ -186,6 +186,7 @@ class XeggexExchange(ExchangeBase):
         updating statuses and tracking user data.
         """
         self.order_book_tracker.start()
+        await self._update_trading_rules()
         self._trading_rules_polling_task = safe_ensure_future(self._trading_rules_polling_loop())
         if self._trading_required:
             self._status_polling_task = safe_ensure_future(self._status_polling_loop())
@@ -273,8 +274,8 @@ class XeggexExchange(ExchangeBase):
                 trading_pair = await XeggexAPIOrderBookDataSource.trading_pair_associated_to_exchange_symbol(
                     rule["symbol"]
                 )
-                price_step = Decimal(1) / 10**Decimal(str(rule["priceDecimals"]))
-                size_step = Decimal(1) / 10**Decimal(str(rule["quantityDecimals"]))
+                price_step = Decimal(1) / 10 ** Decimal(str(rule["priceDecimals"]))
+                size_step = Decimal(1) / 10 ** Decimal(str(rule["quantityDecimals"]))
                 # price_step = Decimal("0.00000001")
                 # size_step = Decimal("0.00000001")
                 result[trading_pair] = TradingRule(
@@ -747,11 +748,7 @@ class XeggexExchange(ExchangeBase):
                 exchange_trade_id=trade_msg["tradeId"],
             ),
         )
-        if (
-            math.isclose(tracked_order.executed_amount_base, tracked_order.amount)
-            or tracked_order.executed_amount_base >= tracked_order.amount
-            or tracked_order.is_done
-        ):
+        if (math.isclose(tracked_order.executed_amount_base, tracked_order.amount) or tracked_order.executed_amount_base >= tracked_order.amount or tracked_order.is_done):
             tracked_order.last_state = "Filled"
             self.logger().info(
                 f"The {tracked_order.trade_type.name} order "
