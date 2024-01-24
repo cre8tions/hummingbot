@@ -282,7 +282,7 @@ class NonkycExchange(ExchangeBase):
                     min_price_increment=price_step,
                 )
             except Exception:
-                self.logger().error(f"Error parsing the trading pair rule {rule}. Skipping.", exc_info=True)
+                self.logger().error(f"Error parsing the trading pair rule {rule['symbol']}. Skipping.", exc_info=True)
         return result
 
     async def _api_request(
