@@ -9,22 +9,25 @@ PROD_REST_URL = "https://sapi.xt.com/"
 TEST_REST_URL = "https://sapi.xt-uat.com/"
 WSS_URL = "wss://stream.xt.com/public"
 
+DEFAULT_DOMAIN = PROD_REST_URL
+REST_URL = PROD_REST_URL
+
 PUBLIC_API_VERSION = "v4"
 PRIVATE_API_VERSION = "v4"
 
 # Public API endpoints or XtClient function
-TICKER_PRICE_CHANGE_PATH_URL = "/v4/public/ticker/price"
-TICKER_BOOK_PATH_URL = "/v4/public/ticker/book"
-EXCHANGE_INFO_PATH_URL = "/v4/public/time"
-PING_PATH_URL = "/v4/public/time"
-SNAPSHOT_PATH_URL = "/v4/public/depth"
-SERVER_TIME_PATH_URL = "/v4/public/time"
+TICKER_PRICE_CHANGE_PATH_URL = "/public/ticker/price"
+TICKER_BOOK_PATH_URL = "/public/ticker/book"
+EXCHANGE_INFO_PATH_URL = "/public/symbol"
+PING_PATH_URL = "/public/time"
+SNAPSHOT_PATH_URL = "/public/depth"
+SERVER_TIME_PATH_URL = "/public/time"
 
 # Private API endpoints or XtClient function
-ACCOUNTS_PATH_URL = "/account"
+ACCOUNTS_PATH_URL = "/public/currencies"
 MY_TRADES_PATH_URL = "/order"
 ORDER_PATH_URL = "/order"
-BINANCE_USER_STREAM_PATH_URL = "/userDataStream"
+XT_USER_STREAM_PATH_URL = "/userDataStream"
 
 WS_HEARTBEAT_TIME_INTERVAL = 30
 
@@ -85,7 +88,7 @@ RATE_LIMITS = [
     RateLimit(limit_id=SNAPSHOT_PATH_URL, limit=MAX_REQUEST, time_interval=ONE_MINUTE,
               linked_limits=[LinkedLimitWeightPair(REQUEST_WEIGHT, 100),
                              LinkedLimitWeightPair(RAW_REQUESTS, 1)]),
-    RateLimit(limit_id=BINANCE_USER_STREAM_PATH_URL, limit=MAX_REQUEST, time_interval=ONE_MINUTE,
+    RateLimit(limit_id=XT_USER_STREAM_PATH_URL, limit=MAX_REQUEST, time_interval=ONE_MINUTE,
               linked_limits=[LinkedLimitWeightPair(REQUEST_WEIGHT, 2),
                              LinkedLimitWeightPair(RAW_REQUESTS, 1)]),
     RateLimit(limit_id=SERVER_TIME_PATH_URL, limit=MAX_REQUEST, time_interval=ONE_MINUTE,

@@ -1,6 +1,6 @@
 from typing import Callable, Optional
 
-import hummingbot.connector.exchange.binance.binance_constants as CONSTANTS
+import hummingbot.connector.exchange.xt.xt_constants as CONSTANTS
 from hummingbot.connector.time_synchronizer import TimeSynchronizer
 from hummingbot.connector.utils import TimeSynchronizerRESTPreProcessor
 from hummingbot.core.api_throttler.async_throttler import AsyncThrottler
@@ -71,5 +71,5 @@ async def get_current_server_time(
         method=RESTMethod.GET,
         throttler_limit_id=CONSTANTS.SERVER_TIME_PATH_URL,
     )
-    server_time = response["serverTime"]
+    server_time = response["result"]["serverTime"]
     return server_time

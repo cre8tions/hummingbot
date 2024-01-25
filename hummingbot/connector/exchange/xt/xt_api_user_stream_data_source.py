@@ -2,8 +2,8 @@ import asyncio
 import time
 from typing import TYPE_CHECKING, List, Optional
 
-from hummingbot.connector.exchange.binance import binance_constants as CONSTANTS, binance_web_utils as web_utils
-from hummingbot.connector.exchange.binance.binance_auth import XtAuth
+from hummingbot.connector.exchange.xt import xt_constants as CONSTANTS, xt_web_utils as web_utils
+from hummingbot.connector.exchange.xt.xt_auth import XtAuth
 from hummingbot.core.data_type.user_stream_tracker_data_source import UserStreamTrackerDataSource
 from hummingbot.core.utils.async_utils import safe_ensure_future
 from hummingbot.core.web_assistant.connections.data_types import RESTMethod
@@ -12,7 +12,7 @@ from hummingbot.core.web_assistant.ws_assistant import WSAssistant
 from hummingbot.logger import HummingbotLogger
 
 if TYPE_CHECKING:
-    from hummingbot.connector.exchange.binance.binance_exchange import XtExchange
+    from hummingbot.connector.exchange.xt.xt_exchange import XtExchange
 
 
 class XtAPIUserStreamDataSource(UserStreamTrackerDataSource):
@@ -63,9 +63,9 @@ class XtAPIUserStreamDataSource(UserStreamTrackerDataSource):
         rest_assistant = await self._api_factory.get_rest_assistant()
         try:
             data = await rest_assistant.execute_request(
-                url=web_utils.public_rest_url(path_url=CONSTANTS.BINANCE_USER_STREAM_PATH_URL, domain=self._domain),
+                url=web_utils.public_rest_url(path_url=CONSTANTS.XT_USER_STREAM_PATH_URL, domain=self._domain),
                 method=RESTMethod.POST,
-                throttler_limit_id=CONSTANTS.BINANCE_USER_STREAM_PATH_URL,
+                throttler_limit_id=CONSTANTS.XT_USER_STREAM_PATH_URL,
                 headers=self._auth.header_for_authentication()
             )
         except asyncio.CancelledError:
@@ -79,11 +79,11 @@ class XtAPIUserStreamDataSource(UserStreamTrackerDataSource):
         rest_assistant = await self._api_factory.get_rest_assistant()
         try:
             data = await rest_assistant.execute_request(
-                url=web_utils.public_rest_url(path_url=CONSTANTS.BINANCE_USER_STREAM_PATH_URL, domain=self._domain),
+                url=web_utils.public_rest_url(path_url=CONSTANTS.XT_USER_STREAM_PATH_URL, domain=self._domain),
                 params={"listenKey": self._current_listen_key},
                 method=RESTMethod.PUT,
                 return_err=True,
-                throttler_limit_id=CONSTANTS.BINANCE_USER_STREAM_PATH_URL,
+                throttler_limit_id=CONSTANTS.XT_USER_STREAM_PATH_URL,
                 headers=self._auth.header_for_authentication()
             )
 
