@@ -15,7 +15,7 @@ CENTRALIZED = True
 
 EXAMPLE_PAIR = "BTC_USDT"
 
-DEFAULT_FEES = [0.1, 0.1]
+DEFAULT_FEES = [0.002, 0.002]
 
 
 class XeggexAPIError(IOError):
@@ -81,8 +81,7 @@ async def aiohttp_response_with_errors(request_coroutine):
                         parsed_response = f"{parsed_response[:100]} ... (truncated)"
                 except Exception:
                     pass
-            TempFailure = (parsed_response is None or
-                           (response.status not in [200, 201] and "error" not in parsed_response))
+            TempFailure = (parsed_response is None or (response.status not in [200, 201] and "error" not in parsed_response))
             if TempFailure:
                 parsed_response = response.reason if parsed_response is None else parsed_response
                 request_errors = True
