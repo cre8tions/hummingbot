@@ -15,7 +15,7 @@ CENTRALIZED = True
 
 EXAMPLE_PAIR = "BTC_USDT"
 
-DEFAULT_FEES = [0.1, 0.1]
+DEFAULT_FEES = [0.002, 0.002]
 
 
 class NonKYCAPIError(IOError):
