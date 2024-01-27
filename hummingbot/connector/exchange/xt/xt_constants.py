@@ -24,7 +24,7 @@ SNAPSHOT_PATH_URL = "/public/depth"
 SERVER_TIME_PATH_URL = "/public/time"
 
 # Private API endpoints or XtClient function
-ACCOUNTS_PATH_URL = "/public/currencies"
+ACCOUNTS_PATH_URL = "/balances"
 MY_TRADES_PATH_URL = "/order"
 ORDER_PATH_URL = "/order"
 XT_USER_STREAM_PATH_URL = "/userDataStream"

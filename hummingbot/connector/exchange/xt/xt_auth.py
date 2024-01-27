@@ -1,11 +1,11 @@
 # Public Key（AccessKey） 529993c5-444c-43a5-85aa-89e4a69fe40a
 # Private Key（SecretKey）6d301c6b7cfe8c654e6c89f3e3f4d992731ef41e
+import datetime
 import hashlib
 import hmac
 import json
-from collections import OrderedDict
-from typing import Any, Dict
-from urllib.parse import urlencode
+import math
+from typing import Dict
 
 from hummingbot.connector.time_synchronizer import TimeSynchronizer
 from hummingbot.core.web_assistant.auth import AuthBase
@@ -24,43 +24,62 @@ class XtAuth(AuthBase):
         the required parameter in the request header.
         :param request: the request to be configured for authenticated interaction
         """
+        foo = None
         if request.method == RESTMethod.POST:
-            request.data = self.add_auth_to_params(params=json.loads(request.data))
+            foo = json.loads(request.data)
         else:
-            request.params = self.add_auth_to_params(params=request.params)
+            foo = request.params
 
         headers = {}
-        if request.headers is not None:
-            headers.update(request.headers)
+        # if request.headers is not None:
+        #     headers.update(request.headers)
+
         headers.update(self.header_for_authentication())
+        headers.update(
+            self.create_signature(
+                request.url, request.method.value, headers=headers, secret_key=self.secret_key, params=foo
+            )
+        )
+
+        headers.update({"header": "accept: */*", "Content-Type:": "application/json"})
+
         request.headers = headers
 
         return request
 
     async def ws_authenticate(self, request: WSRequest) -> WSRequest:
-        """
-        This method is intended to configure a websocket request to be authenticated. Xt does not use this
-        functionality
-        """
         return request  # pass-through
 
-    def add_auth_to_params(self,
-                           params: Dict[str, Any]):
-        timestamp = int(self.time_provider.time() * 1e3)
-
-        request_params = OrderedDict(params or {})
-        request_params["timestamp"] = timestamp
-
-        signature = self._generate_signature(params=request_params)
-        request_params["signature"] = signature
-
-        return request_params
-
     def header_for_authentication(self) -> Dict[str, str]:
-        return {"X-MBX-APIKEY": self.api_key}
+        ts = str((math.trunc(datetime.datetime.utcnow().timestamp() * 1e3) - 30000))
+        return {
+            "validate-algorithms": "HmacSHA256",
+            "validate-appkey": self.api_key,
+            "validate-recvwindow": "60000",
+            "validate-timestamp": ts,
+        }
 
-    def _generate_signature(self, params: Dict[str, Any]) -> str:
-
-        encoded_params_str = urlencode(params)
-        digest = hmac.new(self.secret_key.encode("utf8"), encoded_params_str.encode("utf8"), hashlib.sha256).hexdigest()
-        return digest
+    def create_signature(cls, url, method, headers=None, secret_key=None, **kwargs):
+        path_str = url
+        query = kwargs.pop("params", None)
+        data = kwargs.pop("data", None) or kwargs.pop("json", None)
+        query_str = (
+            ""
+            if query is None
+            else "&".join(
+                [
+                    f"{key}={json.dumps(query[key]) if type(query[key]) in [dict, list] else query[key]}"
+                    for key in sorted(query)
+                ]
+            )
+        )
+        body_str = json.dumps(data) if data is not None else ""
+        y = "#" + "#".join([i for i in [method, path_str, query_str, body_str] if i])
+        x = "&".join([f"{key}={headers[key]}" for key in sorted(headers)])
+        sign = f"{x}{y}"
+        # print(sign)
+        return {
+            "validate-signature": hmac.new(secret_key.encode("utf-8"), sign.encode("utf-8"), hashlib.sha256)
+            .hexdigest()
+            .upper()
+        }
