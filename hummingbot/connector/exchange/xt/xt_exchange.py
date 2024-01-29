@@ -5,7 +5,7 @@ from typing import TYPE_CHECKING, Any, Dict, List, Optional, Tuple
 from bidict import bidict
 
 from hummingbot.connector.constants import s_decimal_NaN
-from hummingbot.connector.exchange.xt import xt_constants as CONSTANTS, xt_utils, xt_web_utils as web_utils
+from hummingbot.connector.exchange.xt import xt_constants as XTCONSTANTS, xt_utils, xt_web_utils as web_utils
 from hummingbot.connector.exchange.xt.xt_api_order_book_data_source import XtAPIOrderBookDataSource
 from hummingbot.connector.exchange.xt.xt_api_user_stream_data_source import XtAPIUserStreamDataSource
 from hummingbot.connector.exchange.xt.xt_auth import XtAuth
@@ -37,7 +37,7 @@ class XtExchange(ExchangePyBase):
                  xt_api_secret: str,
                  trading_pairs: Optional[List[str]] = None,
                  trading_required: bool = True,
-                 domain: str = CONSTANTS.DEFAULT_DOMAIN,
+                 domain: str = XTCONSTANTS.DEFAULT_DOMAIN,
                  ):
         self.api_key = xt_api_key
         self.secret_key = xt_api_secret
@@ -71,7 +71,7 @@ class XtExchange(ExchangePyBase):
 
     @property
     def rate_limits_rules(self):
-        return CONSTANTS.RATE_LIMITS
+        return XTCONSTANTS.RATE_LIMITS
 
     @property
     def domain(self):
@@ -79,23 +79,23 @@ class XtExchange(ExchangePyBase):
 
     @property
     def client_order_id_max_length(self):
-        return CONSTANTS.MAX_ORDER_ID_LEN
+        return XTCONSTANTS.MAX_ORDER_ID_LEN
 
     @property
     def client_order_id_prefix(self):
-        return CONSTANTS.HBOT_ORDER_ID_PREFIX
+        return XTCONSTANTS.HBOT_ORDER_ID_PREFIX
 
     @property
     def trading_rules_request_path(self):
-        return CONSTANTS.EXCHANGE_INFO_PATH_URL
+        return XTCONSTANTS.EXCHANGE_INFO_PATH_URL
 
     @property
     def trading_pairs_request_path(self):
-        return CONSTANTS.EXCHANGE_INFO_PATH_URL
+        return XTCONSTANTS.EXCHANGE_INFO_PATH_URL
 
     @property
     def check_network_request_path(self):
-        return CONSTANTS.PING_PATH_URL
+        return XTCONSTANTS.PING_PATH_URL
 
     @property
     def trading_pairs(self):
@@ -113,7 +113,7 @@ class XtExchange(ExchangePyBase):
         return [OrderType.LIMIT, OrderType.LIMIT_MAKER, OrderType.MARKET]
 
     async def get_all_pairs_prices(self) -> List[Dict[str, str]]:
-        pairs_prices = await self._api_get(path_url=CONSTANTS.TICKER_BOOK_PATH_URL)
+        pairs_prices = await self._api_get(path_url=XTCONSTANTS.TICKER_BOOK_PATH_URL)
         return pairs_prices
 
     def _is_request_exception_related_to_time_synchronizer(self, request_exception: Exception):
@@ -123,14 +123,14 @@ class XtExchange(ExchangePyBase):
         return is_time_synchronizer_related
 
     def _is_order_not_found_during_status_update_error(self, status_update_exception: Exception) -> bool:
-        return str(CONSTANTS.ORDER_NOT_EXIST_ERROR_CODE) in str(
+        return str(XTCONSTANTS.ORDER_NOT_EXIST_ERROR_CODE) in str(
             status_update_exception
-        ) and CONSTANTS.ORDER_NOT_EXIST_MESSAGE in str(status_update_exception)
+        ) and XTCONSTANTS.ORDER_NOT_EXIST_MESSAGE in str(status_update_exception)
 
     def _is_order_not_found_during_cancelation_error(self, cancelation_exception: Exception) -> bool:
-        return str(CONSTANTS.UNKNOWN_ORDER_ERROR_CODE) in str(
+        return str(XTCONSTANTS.UNKNOWN_ORDER_ERROR_CODE) in str(
             cancelation_exception
-        ) and CONSTANTS.UNKNOWN_ORDER_MESSAGE in str(cancelation_exception)
+        ) and XTCONSTANTS.UNKNOWN_ORDER_MESSAGE in str(cancelation_exception)
 
     def _create_web_assistants_factory(self) -> WebAssistantsFactory:
         return web_utils.build_api_factory(
@@ -177,7 +177,7 @@ class XtExchange(ExchangePyBase):
         order_result = None
         amount_str = f"{amount:f}"
         type_str = XtExchange.xt_order_type(order_type)
-        side_str = CONSTANTS.SIDE_BUY if trade_type is TradeType.BUY else CONSTANTS.SIDE_SELL
+        side_str = XTCONSTANTS.SIDE_BUY if trade_type is TradeType.BUY else XTCONSTANTS.SIDE_SELL
         symbol = await self.exchange_symbol_associated_to_pair(trading_pair=trading_pair)
         api_params = {"symbol": symbol,
                       "side": side_str,
@@ -188,11 +188,11 @@ class XtExchange(ExchangePyBase):
             price_str = f"{price:f}"
             api_params["price"] = price_str
         if order_type == OrderType.LIMIT:
-            api_params["timeInForce"] = CONSTANTS.TIME_IN_FORCE_GTC
+            api_params["timeInForce"] = XTCONSTANTS.TIME_IN_FORCE_GTC
 
         try:
             order_result = await self._api_post(
-                path_url=CONSTANTS.ORDER_PATH_URL,
+                path_url=XTCONSTANTS.ORDER_PATH_URL,
                 data=api_params,
                 is_auth_required=True)
             o_id = str(order_result["orderId"])
@@ -215,7 +215,7 @@ class XtExchange(ExchangePyBase):
             "origClientOrderId": order_id,
         }
         cancel_result = await self._api_delete(
-            path_url=CONSTANTS.ORDER_PATH_URL,
+            path_url=XTCONSTANTS.ORDER_PATH_URL,
             params=api_params,
             is_auth_required=True)
         if cancel_result.get("status") == "CANCELED":
@@ -327,7 +327,7 @@ class XtExchange(ExchangePyBase):
                         order_update = OrderUpdate(
                             trading_pair=tracked_order.trading_pair,
                             update_timestamp=event_message["E"] * 1e-3,
-                            new_state=CONSTANTS.ORDER_STATE[event_message["X"]],
+                            new_state=XTCONSTANTS.ORDER_STATE[event_message["X"]],
                             client_order_id=client_order_id,
                             exchange_order_id=str(event_message["i"]),
                         )
@@ -379,7 +379,7 @@ class XtExchange(ExchangePyBase):
                 if self._last_poll_timestamp > 0:
                     params["startTime"] = query_time
                 tasks.append(self._api_get(
-                    path_url=CONSTANTS.MY_TRADES_PATH_URL,
+                    path_url=XTCONSTANTS.MY_TRADES_PATH_URL,
                     params=params,
                     is_auth_required=True))
 
@@ -452,13 +452,13 @@ class XtExchange(ExchangePyBase):
             exchange_order_id = int(order.exchange_order_id)
             trading_pair = await self.exchange_symbol_associated_to_pair(trading_pair=order.trading_pair)
             all_fills_response = await self._api_get(
-                path_url=CONSTANTS.MY_TRADES_PATH_URL,
+                path_url=XTCONSTANTS.MY_TRADES_PATH_URL,
                 params={
                     "symbol": trading_pair,
                     "orderId": exchange_order_id
                 },
                 is_auth_required=True,
-                limit_id=CONSTANTS.MY_TRADES_PATH_URL)
+                limit_id=XTCONSTANTS.MY_TRADES_PATH_URL)
 
             for trade in all_fills_response:
                 exchange_order_id = str(trade["orderId"])
@@ -486,13 +486,13 @@ class XtExchange(ExchangePyBase):
     async def _request_order_status(self, tracked_order: InFlightOrder) -> OrderUpdate:
         trading_pair = await self.exchange_symbol_associated_to_pair(trading_pair=tracked_order.trading_pair)
         updated_order_data = await self._api_get(
-            path_url=CONSTANTS.ORDER_PATH_URL,
+            path_url=XTCONSTANTS.ORDER_PATH_URL,
             params={
                 "symbol": trading_pair,
                 "origClientOrderId": tracked_order.client_order_id},
             is_auth_required=True)
 
-        new_state = CONSTANTS.ORDER_STATE[updated_order_data["status"]]
+        new_state = XTCONSTANTS.ORDER_STATE[updated_order_data["status"]]
 
         order_update = OrderUpdate(
             client_order_id=tracked_order.client_order_id,
@@ -509,10 +509,14 @@ class XtExchange(ExchangePyBase):
         remote_asset_names = set()
 
         account_info = await self._api_get(
-            path_url=CONSTANTS.ACCOUNTS_PATH_URL,
+            path_url=XTCONSTANTS.ACCOUNTS_PATH_URL,
             is_auth_required=True)
 
-        balances = account_info["balances"]
+        # self._account_available_balances['usdt'] = account_info["result"]["totalUsdtAmount"]
+        # self._account_balances['usdt'] = account_info["result"]["totalUsdtAmount"]
+        # remote_asset_names.add('usdt')
+
+        balances = account_info["result"]["assets"]
         for balance_entry in balances:
             asset_name = balance_entry["asset"]
             free_balance = Decimal(balance_entry["free"])
@@ -540,7 +544,7 @@ class XtExchange(ExchangePyBase):
 
         resp_json = await self._api_request(
             method=RESTMethod.GET,
-            path_url=CONSTANTS.TICKER_PRICE_CHANGE_PATH_URL,
+            path_url=XTCONSTANTS.TICKER_PRICE_CHANGE_PATH_URL,
             params=params
         )
 
