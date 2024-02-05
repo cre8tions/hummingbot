@@ -8,8 +8,9 @@ MAX_ORDER_ID_LEN = 32
 PROD_REST_URL = "https://sapi.xt.com/"
 TEST_REST_URL = "https://sapi.xt-uat.com/"
 WSS_URL = "wss://stream.xt.com/public"
+WSS_PRIVATE_URL = "wss://stream.xt.com/private"
 
-DEFAULT_DOMAIN = PROD_REST_URL
+DEFAULT_DOMAIN = ""
 REST_URL = PROD_REST_URL
 
 PUBLIC_API_VERSION = "v4"
@@ -27,6 +28,7 @@ SERVER_TIME_PATH_URL = "/public/time"
 ACCOUNTS_PATH_URL = "/balances"
 MY_TRADES_PATH_URL = "/order"
 ORDER_PATH_URL = "/order"
+WSS_TOKEN_URL = "/ws-token"
 XT_USER_STREAM_PATH_URL = "/userDataStream"
 
 WS_HEARTBEAT_TIME_INTERVAL = 30

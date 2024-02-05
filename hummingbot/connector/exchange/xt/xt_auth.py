@@ -56,14 +56,22 @@ class XtAuth(AuthBase):
     async def ws_authenticate(self, request: WSRequest) -> WSRequest:
         return request  # pass-through
 
-    def header_for_authentication(self) -> Dict[str, str]:
-        # ts = str((math.trunc(datetime.datetime.utcnow().timestamp() * 1e3) - 45000))
-        return {
-            "xt-validate-algorithms": "HmacSHA256",
-            "xt-validate-appkey": self.api_key,
-            "xt-validate-recvwindow": "60000",
-            "xt-validate-timestamp": str(int((time.time() - 30) * 1000)),
-        }
+    def header_for_authentication(self, path_url, params, method: RESTMethod = RESTMethod.POST) -> Dict[str, str]:
+        headers = {}
+        headers.update(
+            {
+                "xt-validate-algorithms": "HmacSHA256",
+                "xt-validate-appkey": self.api_key,
+                "xt-validate-recvwindow": "60000",
+                "xt-validate-timestamp": str(int((time.time() - 30) * 1000)),
+            }
+        )
+
+        headers.update(
+            self.create_signature(
+                path_url, method, headers=headers, secret_key=self.secret_key, params=params
+            )
+        )
 
     def create_signature(cls, url, method, headers=None, secret_key=None, **kwargs):
         path_str = url

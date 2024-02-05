@@ -518,9 +518,9 @@ class XtExchange(ExchangePyBase):
 
         balances = account_info["result"]["assets"]
         for balance_entry in balances:
-            asset_name = balance_entry["asset"]
-            free_balance = Decimal(balance_entry["free"])
-            total_balance = Decimal(balance_entry["free"]) + Decimal(balance_entry["locked"])
+            asset_name = balance_entry["currency"]
+            free_balance = Decimal(balance_entry["availableAmount"])
+            total_balance = Decimal(balance_entry["availableAmount"]) + Decimal(balance_entry["frozenAmount"])
             self._account_available_balances[asset_name] = free_balance
             self._account_balances[asset_name] = total_balance
             remote_asset_names.add(asset_name)
