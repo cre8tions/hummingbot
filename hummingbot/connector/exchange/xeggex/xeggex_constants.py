@@ -50,3 +50,8 @@ class Constants:
     UPDATE_ORDER_STATUS_INTERVAL = 60.0
     # 10 minute interval to update trading rules, these would likely never change whilst running.
     INTERVAL_TRADING_RULES = 600
+    MINUTE = 60
+    TWELVE_HOURS = MINUTE * 60 * 12
+    TRADING_RULES_INTERVAL = 30 * MINUTE
+    TRADING_FEES_INTERVAL = TWELVE_HOURS
+    TICK_INTERVAL_LIMIT = 60.0

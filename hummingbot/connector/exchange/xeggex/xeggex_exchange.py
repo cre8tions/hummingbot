@@ -165,7 +165,7 @@ class XeggexExchange(ExchangeBase):
         :return a list of OrderType supported by this connector.
         Note that Market order type is no longer required and will not be used.
         """
-        return [OrderType.LIMIT]
+        return [OrderType.LIMIT, OrderType.MARKET]
 
     def start(self, clock: Clock, timestamp: float):
         """
