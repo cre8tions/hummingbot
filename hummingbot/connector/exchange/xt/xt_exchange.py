@@ -1,3 +1,4 @@
+# 591146-258E5C-411BB5-FD0FD3-1DACBA-B8B98B
 import asyncio
 from decimal import Decimal
 from typing import TYPE_CHECKING, Any, Dict, List, Optional, Tuple
@@ -6,6 +7,9 @@ from bidict import bidict
 
 from hummingbot.connector.constants import s_decimal_NaN
 from hummingbot.connector.exchange.xt import xt_constants as XTCONSTANTS, xt_utils, xt_web_utils as web_utils
+from hummingbot.connector.exchange.xt.pyxt.spot import Spot
+
+# from hummingbot.connector.exchange.xt.pyxt.websocket.spot import SpotWebsocketStreamClient
 from hummingbot.connector.exchange.xt.xt_api_order_book_data_source import XtAPIOrderBookDataSource
 from hummingbot.connector.exchange.xt.xt_api_user_stream_data_source import XtAPIUserStreamDataSource
 from hummingbot.connector.exchange.xt.xt_auth import XtAuth
@@ -45,6 +49,7 @@ class XtExchange(ExchangePyBase):
         self._trading_required = trading_required
         self._trading_pairs = trading_pairs
         self._last_trades_poll_xt_timestamp = 1.0
+        self.xt = Spot(host=XTCONSTANTS.PROD_REST_URL, access_key=self.api_key, secret_key=self.secret_key)
         super().__init__(client_config_map)
 
     @staticmethod
@@ -191,16 +196,12 @@ class XtExchange(ExchangePyBase):
             api_params["timeInForce"] = XTCONSTANTS.TIME_IN_FORCE_GTC
 
         try:
-            order_result = await self._api_post(
-                path_url=XTCONSTANTS.ORDER_PATH_URL,
-                data=api_params,
-                is_auth_required=True)
+            order_result = self.xt.order(self, symbol, side_str, type_str, biz_type='SPOT', time_in_force='GTC', price=price, quantity=amount)
             o_id = str(order_result["orderId"])
-            transact_time = order_result["transactTime"] * 1e-3
+            transact_time = self._time_synchronizer.time()
         except IOError as e:
             error_description = str(e)
-            is_server_overloaded = ("status is 503" in error_description
-                                    and "Unknown error, please check your request or try again later." in error_description)
+            is_server_overloaded = ("status is 503" in error_description and "Unknown error, please check your request or try again later." in error_description)
             if is_server_overloaded:
                 o_id = "UNKNOWN"
                 transact_time = self._time_synchronizer.time()
@@ -209,16 +210,8 @@ class XtExchange(ExchangePyBase):
         return o_id, transact_time
 
     async def _place_cancel(self, order_id: str, tracked_order: InFlightOrder):
-        symbol = await self.exchange_symbol_associated_to_pair(trading_pair=tracked_order.trading_pair)
-        api_params = {
-            "symbol": symbol,
-            "origClientOrderId": order_id,
-        }
-        cancel_result = await self._api_delete(
-            path_url=XTCONSTANTS.ORDER_PATH_URL,
-            params=api_params,
-            is_auth_required=True)
-        if cancel_result.get("status") == "CANCELED":
+        cancel_result = self.xt.cancel_order(order_id)
+        if cancel_result['cancelId'].isnumeric():
             return True
         return False
 

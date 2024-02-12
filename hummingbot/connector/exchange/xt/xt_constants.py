@@ -4,6 +4,9 @@ from hummingbot.core.data_type.in_flight_order import OrderState
 HBOT_ORDER_ID_PREFIX = "x-XEKWYICX"
 MAX_ORDER_ID_LEN = 32
 
+PUBLIC_API_VERSION = "v4"
+PRIVATE_API_VERSION = "v4"
+
 # Base URL
 PROD_REST_URL = "https://sapi.xt.com/"
 TEST_REST_URL = "https://sapi.xt-uat.com/"
@@ -12,9 +15,6 @@ WSS_PRIVATE_URL = "wss://stream.xt.com/private"
 
 DEFAULT_DOMAIN = ""
 REST_URL = PROD_REST_URL
-
-PUBLIC_API_VERSION = "v4"
-PRIVATE_API_VERSION = "v4"
 
 # Public API endpoints or XtClient function
 TICKER_PRICE_CHANGE_PATH_URL = "/public/ticker/price"
@@ -41,6 +41,7 @@ SIDE_SELL = "SELL"
 TIME_IN_FORCE_GTC = "GTC"  # Good till cancelled
 TIME_IN_FORCE_IOC = "IOC"  # Immediate or cancel
 TIME_IN_FORCE_FOK = "FOK"  # Fill or kill
+TIME_IN_FORCE_GTX = "GTX"  # Revoke if unable to become a pending party
 
 # Rate Limit Type
 REQUEST_WEIGHT = "REQUEST_WEIGHT"

@@ -1,11 +1,13 @@
 from typing import Callable, Optional
 
 import hummingbot.connector.exchange.xt.xt_constants as CONSTANTS
+from hummingbot.connector.exchange.xt.pyxt.spot import Spot
 from hummingbot.connector.time_synchronizer import TimeSynchronizer
 from hummingbot.connector.utils import TimeSynchronizerRESTPreProcessor
 from hummingbot.core.api_throttler.async_throttler import AsyncThrottler
 from hummingbot.core.web_assistant.auth import AuthBase
-from hummingbot.core.web_assistant.connections.data_types import RESTMethod
+
+# from hummingbot.core.web_assistant.connections.data_types import RESTMethod
 from hummingbot.core.web_assistant.web_assistants_factory import WebAssistantsFactory
 
 
@@ -63,14 +65,15 @@ async def get_current_server_time(
         throttler: Optional[AsyncThrottler] = None,
         domain: str = CONSTANTS.DEFAULT_DOMAIN,
 ) -> float:
-    throttler = throttler or create_throttler()
-    api_factory = build_api_factory_without_time_synchronizer_pre_processor(throttler=throttler)
-    rest_assistant = await api_factory.get_rest_assistant()
-    response = await rest_assistant.execute_request(
-        url=public_rest_url(path_url=CONSTANTS.SERVER_TIME_PATH_URL, domain=domain),
-        method=RESTMethod.GET,
-        throttler_limit_id=CONSTANTS.SERVER_TIME_PATH_URL,
-        is_auth_required=False
-    )
-    server_time = response["result"]["serverTime"]
-    return server_time
+    # throttler = throttler or create_throttler()
+    # api_factory = build_api_factory_without_time_synchronizer_pre_processor(throttler=throttler)
+    # rest_assistant = await api_factory.get_rest_assistant()
+    # response = await rest_assistant.execute_request(
+    #     url=public_rest_url(path_url=CONSTANTS.SERVER_TIME_PATH_URL, domain=domain),
+    #     method=RESTMethod.GET,
+    #     throttler_limit_id=CONSTANTS.SERVER_TIME_PATH_URL,
+    #     is_auth_required=False
+    # )
+    # server_time = response["result"]["serverTime"]
+    xt = Spot(host=CONSTANTS.PROD_REST_URL, access_key='', secret_key='')
+    return xt.get_time()

@@ -28,27 +28,16 @@ class XtAuth(AuthBase):
         the required parameter in the request header.
         :param request: the request to be configured for authenticated interaction
         """
-        foo = None
+        params = None
         if request.method == RESTMethod.POST:
-            foo = json.loads(request.data)
+            params = json.loads(request.data)
         else:
-            foo = request.params
+            params = request.params
 
         headers = {}
-        # if request.headers is not None:
-        #     headers.update(request.headers)
-
         APIPath = f"/{request.url.replace(CONSTANTS.PROD_REST_URL, '')}"
-
-        headers.update(self.header_for_authentication())
-        headers.update(
-            self.create_signature(
-                APIPath, request.method.value, headers=headers, secret_key=self.secret_key, params=foo
-            )
-        )
-
+        headers.update(self.header_for_authentication(APIPath, request.method.value, params=params))
         headers.update({"User-Agent": "Mozilla/5.0 (Windows NT 6.1; WOW64; rv:53.0) Gecko/20100101 Firefox/53.0", "Content-Type:": "application/x-www-form-urlencoded"})
-
         request.headers = headers
 
         return request
@@ -56,7 +45,7 @@ class XtAuth(AuthBase):
     async def ws_authenticate(self, request: WSRequest) -> WSRequest:
         return request  # pass-through
 
-    def header_for_authentication(self, path_url, params, method: RESTMethod = RESTMethod.POST) -> Dict[str, str]:
+    def header_for_authentication(self, path_url, method: RESTMethod, params,) -> Dict[str, str]:
         headers = {}
         headers.update(
             {
@@ -69,9 +58,11 @@ class XtAuth(AuthBase):
 
         headers.update(
             self.create_signature(
-                path_url, method, headers=headers, secret_key=self.secret_key, params=params
+                path_url, method, headers, self.secret_key, params=params
             )
         )
+
+        return headers
 
     def create_signature(cls, url, method, headers=None, secret_key=None, **kwargs):
         path_str = url

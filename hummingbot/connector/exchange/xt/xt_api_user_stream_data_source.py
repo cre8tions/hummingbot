@@ -3,6 +3,10 @@ import time
 from typing import TYPE_CHECKING, List, Optional
 
 from hummingbot.connector.exchange.xt import xt_constants as CONSTANTS, xt_web_utils as web_utils
+from hummingbot.connector.exchange.xt.pyxt.spot import Spot
+
+# from hummingbot.connector.exchange.xt.pyxt.websocket.spot import SpotWebsocketStreamClient
+# from hummingbot.connector.exchange.xt.pyxt.websocket.websocket import XTWebsocketClient
 from hummingbot.connector.exchange.xt.xt_auth import XtAuth
 from hummingbot.core.data_type.user_stream_tracker_data_source import UserStreamTrackerDataSource
 from hummingbot.core.utils.async_utils import safe_ensure_future
@@ -60,20 +64,22 @@ class XtAPIUserStreamDataSource(UserStreamTrackerDataSource):
         pass
 
     async def _get_listen_key(self):
-        rest_assistant = await self._api_factory.get_rest_assistant()
-        try:
-            data = await rest_assistant.execute_request(
-                url=web_utils.private_rest_url(path_url=CONSTANTS.WSS_TOKEN_URL),
-                method=RESTMethod.POST,
-                throttler_limit_id=CONSTANTS.WSS_TOKEN_URL,
-                headers=self._auth.header_for_authentication(path_url=CONSTANTS.WSS_TOKEN_URL)
-            )
-        except asyncio.CancelledError:
-            raise
-        except Exception as exception:
-            raise IOError(f"Error fetching user stream listen key. Error: {exception}")
+        # rest_assistant = await self._api_factory.get_rest_assistant()
+        # try:
+        #     data = await rest_assistant.execute_request(
+        #         url=web_utils.private_rest_url(path_url=CONSTANTS.WSS_TOKEN_URL),
+        #         method=RESTMethod.POST,
+        #         throttler_limit_id=CONSTANTS.WSS_TOKEN_URL,
+        #         headers=self._auth.header_for_authentication(CONSTANTS.WSS_TOKEN_URL, RESTMethod.POST, None)
+        #     )
+        # except asyncio.CancelledError:
+        #     raise
+        # except Exception as exception:
+        #     raise IOError(f"Error fetching user stream listen key. Error: {exception}")
+        xt = Spot(host=CONSTANTS.PROD_REST_URL, access_key=self.auth.api_key, secret_key=self.auth.secret_key)
 
-        return data["listenKey"]
+        self._current_listen_key = xt.listen_key()
+        return self._current_listen_key
 
     async def _ping_listen_key(self) -> bool:
         rest_assistant = await self._api_factory.get_rest_assistant()
