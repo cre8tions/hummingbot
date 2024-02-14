@@ -4,8 +4,8 @@ from typing import TYPE_CHECKING, List, Optional
 
 from hummingbot.connector.exchange.xt import xt_constants as CONSTANTS, xt_web_utils as web_utils
 from hummingbot.connector.exchange.xt.pyxt.spot import Spot
+from hummingbot.connector.exchange.xt.pyxt.websocket.spot import SpotWebsocketStreamClient
 
-# from hummingbot.connector.exchange.xt.pyxt.websocket.spot import SpotWebsocketStreamClient
 # from hummingbot.connector.exchange.xt.pyxt.websocket.websocket import XTWebsocketClient
 from hummingbot.connector.exchange.xt.xt_auth import XtAuth
 from hummingbot.core.data_type.user_stream_tracker_data_source import UserStreamTrackerDataSource
@@ -26,12 +26,14 @@ class XtAPIUserStreamDataSource(UserStreamTrackerDataSource):
 
     _logger: Optional[HummingbotLogger] = None
 
-    def __init__(self,
-                 auth: XtAuth,
-                 trading_pairs: List[str],
-                 connector: 'XtExchange',
-                 api_factory: WebAssistantsFactory,
-                 domain: str = CONSTANTS.DEFAULT_DOMAIN):
+    def __init__(
+        self,
+        auth: XtAuth,
+        trading_pairs: List[str],
+        connector: "XtExchange",
+        api_factory: WebAssistantsFactory,
+        domain: str = CONSTANTS.DEFAULT_DOMAIN,
+    ):
         super().__init__()
         self._auth: XtAuth = auth
         self._current_listen_key = None
@@ -40,6 +42,7 @@ class XtAPIUserStreamDataSource(UserStreamTrackerDataSource):
 
         self._listen_key_initialized_event: asyncio.Event = asyncio.Event()
         self._last_listen_key_ping_ts = 0
+        self.ws_client = SpotWebsocketStreamClient(on_message=self._user_stream_event_listener(), is_auth=True)
 
     async def _connected_websocket_assistant(self) -> WSAssistant:
         """
@@ -49,7 +52,7 @@ class XtAPIUserStreamDataSource(UserStreamTrackerDataSource):
         await self._listen_key_initialized_event.wait()
 
         ws: WSAssistant = await self._get_ws_assistant()
-        url = f"{CONSTANTS.WSS_URL}/{self._current_listen_key}"
+        url = f"{CONSTANTS.WSS_PRIVATE_URL}/{self._current_listen_key}"
         await ws.connect(ws_url=url, ping_timeout=CONSTANTS.WS_HEARTBEAT_TIME_INTERVAL)
         return ws
 
@@ -61,6 +64,7 @@ class XtAPIUserStreamDataSource(UserStreamTrackerDataSource):
 
         :param websocket_assistant: the websocket assistant used to connect to the exchange
         """
+        self.ws_client.subscribe()
         pass
 
     async def _get_listen_key(self):
@@ -90,7 +94,7 @@ class XtAPIUserStreamDataSource(UserStreamTrackerDataSource):
                 method=RESTMethod.PUT,
                 return_err=True,
                 throttler_limit_id=CONSTANTS.WSS_TOKEN_URL,
-                headers=self._auth.header_for_authentication()
+                headers=self._auth.header_for_authentication(),
             )
 
             if "code" in data:
