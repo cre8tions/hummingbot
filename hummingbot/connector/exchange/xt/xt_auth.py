@@ -1,10 +1,8 @@
-# Public Key（AccessKey） 529993c5-444c-43a5-85aa-89e4a69fe40a
-# Private Key（SecretKey）6d301c6b7cfe8c654e6c89f3e3f4d992731ef41e
 import hashlib
 import hmac
-import json
-import time
+from collections import OrderedDict
 from typing import Dict
+from urllib.parse import urlencode
 
 from hummingbot.connector.exchange.xt import xt_constants as CONSTANTS
 from hummingbot.connector.time_synchronizer import TimeSynchronizer
@@ -17,10 +15,6 @@ class XtAuth(AuthBase):
         self.api_key = api_key
         self.secret_key = secret_key
         self.time_provider = time_provider
-        self.headers = {
-            "Content-type": "application/x-www-form-urlencoded",
-            'User-Agent': 'Mozilla/5.0 (Windows NT 6.1; WOW64; rv:53.0) Gecko/20100101 Firefox/53.0'
-        }
 
     async def rest_authenticate(self, request: RESTRequest) -> RESTRequest:
         """
@@ -28,63 +22,63 @@ class XtAuth(AuthBase):
         the required parameter in the request header.
         :param request: the request to be configured for authenticated interaction
         """
-        params = None
-        if request.method == RESTMethod.POST:
-            params = json.loads(request.data)
+        endpoint_url = request.url.split(CONSTANTS.PRIVATE_API_VERSION)[1]
+        path = f"/{CONSTANTS.PRIVATE_API_VERSION}{endpoint_url}"
+        if request.method == RESTMethod.GET or request.method == RESTMethod.DELETE:
+            params_str = (
+                urlencode(dict(sorted(request.params.items(), key=lambda kv: (kv[0], kv[1]))), safe=",")
+                if request.params is not None
+                else request.params
+            )
+            headers = self.add_auth_to_headers(method=request.method, path=path, params_str=params_str)
         else:
-            params = request.params
+            headers = self.add_auth_to_headers(method=request.method, path=path, params_str=request.data)
 
-        headers = {}
-        APIPath = f"/{request.url.replace(CONSTANTS.PROD_REST_URL, '')}"
-        headers.update(self.header_for_authentication(APIPath, request.method.value, params=params))
-        headers.update({"User-Agent": "Mozilla/5.0 (Windows NT 6.1; WOW64; rv:53.0) Gecko/20100101 Firefox/53.0", "Content-Type:": "application/x-www-form-urlencoded"})
+        if request.headers is not None:
+            headers.update(request.headers)
         request.headers = headers
 
         return request
 
     async def ws_authenticate(self, request: WSRequest) -> WSRequest:
+        """
+        This method is intended to configure a websocket request to be authenticated. XT does not use this
+        functionality
+        """
         return request  # pass-through
 
-    def header_for_authentication(self, path_url, method: RESTMethod, params,) -> Dict[str, str]:
-        headers = {}
-        headers.update(
-            {
-                "xt-validate-algorithms": "HmacSHA256",
-                "xt-validate-appkey": self.api_key,
-                "xt-validate-recvwindow": "60000",
-                "xt-validate-timestamp": str(int((time.time() - 30) * 1000)),
-            }
-        )
+    def add_auth_to_headers(self, method: RESTMethod, path: str, params_str: str = None):
+        headers = self.header_for_authentication()
+        X = urlencode(dict(sorted(headers.items(), key=lambda kv: (kv[0], kv[1]))))
 
-        headers.update(
-            self.create_signature(
-                path_url, method, headers, self.secret_key, params=params
-            )
+        if params_str is None:
+            Y = "#{}#{}".format(method.value, path)
+        else:
+            Y = "#{}#{}#{}".format(method.value, path, params_str)
+
+        signature = self._generate_signature(X + Y)
+        headers["xt-validate-signature"] = signature
+
+        headers["Content-Type"] = (
+            CONSTANTS.XT_VALIDATE_CONTENTTYPE_URLENCODE
+            if method == RESTMethod.GET
+            else CONSTANTS.XT_VALIDATE_CONTENTTYPE_JSON
         )
 
         return headers
 
-    def create_signature(cls, url, method, headers=None, secret_key=None, **kwargs):
-        path_str = url
-        query = kwargs.pop("params", None)
-        data = kwargs.pop("data", None) or kwargs.pop("json", None)
-        query_str = (
-            ""
-            if query is None
-            else "&".join(
-                [
-                    f"{key}={json.dumps(query[key]) if type(query[key]) in [dict, list] else query[key]}"
-                    for key in sorted(query)
-                ]
-            )
-        )
-        body_str = json.dumps(data) if data is not None else ""
-        y = "#" + "#".join([i for i in [method, path_str, query_str, body_str] if i])
-        x = "&".join([f"{key}={headers[key]}" for key in sorted(headers)])
-        sign = f"{x}{y}"
-        # print(sign)
-        return {
-            "xt-validate-signature": hmac.new(secret_key.encode("utf-8"), sign.encode("utf-8"), hashlib.sha256)
-            .hexdigest()
-            .upper()
-        }
+    def header_for_authentication(self) -> Dict[str, str]:
+
+        headers = OrderedDict()
+        headers["xt-validate-algorithms"] = CONSTANTS.XT_VALIDATE_ALGORITHMS
+        headers["xt-validate-appkey"] = self.api_key
+        headers["xt-validate-recvwindow"] = CONSTANTS.XT_VALIDATE_RECVWINDOW
+
+        timestamp = str(int(self.time_provider.time() * 1e3))
+        headers["xt-validate-timestamp"] = timestamp
+        return headers
+
+    def _generate_signature(self, encoded_params_str: str) -> str:
+
+        digest = hmac.new(self.secret_key.encode("utf8"), encoded_params_str.encode("utf8"), hashlib.sha256).hexdigest()
+        return digest

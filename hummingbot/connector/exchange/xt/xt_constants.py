@@ -1,60 +1,52 @@
-from hummingbot.core.api_throttler.data_types import LinkedLimitWeightPair, RateLimit
+from hummingbot.core.api_throttler.data_types import RateLimit
 from hummingbot.core.data_type.in_flight_order import OrderState
 
-HBOT_ORDER_ID_PREFIX = "x-XEKWYICX"
+DEFAULT_DOMAIN = "com"
+
+HBOT_ORDER_ID_PREFIX = "xt-"
 MAX_ORDER_ID_LEN = 32
+
+# Base URL
+REST_URL = "https://sapi.xt.{}/"
+WSS_URL_PUBLIC = "wss://stream.xt.{}/public"
+WSS_URL_PRIVATE = "wss://stream.xt.{}/private"
 
 PUBLIC_API_VERSION = "v4"
 PRIVATE_API_VERSION = "v4"
 
-# Base URL
-PROD_REST_URL = "https://sapi.xt.com/"
-TEST_REST_URL = "https://sapi.xt-uat.com/"
-WSS_URL = "wss://stream.xt.com/public"
-WSS_PRIVATE_URL = "wss://stream.xt.com/private"
-
-DEFAULT_DOMAIN = ""
-REST_URL = PROD_REST_URL
-
-# Public API endpoints or XtClient function
+# Public REST API endpoints
 TICKER_PRICE_CHANGE_PATH_URL = "/public/ticker/price"
-TICKER_BOOK_PATH_URL = "/public/ticker/book"
 EXCHANGE_INFO_PATH_URL = "/public/symbol"
-PING_PATH_URL = "/public/time"
 SNAPSHOT_PATH_URL = "/public/depth"
 SERVER_TIME_PATH_URL = "/public/time"
 
-# Private API endpoints or XtClient function
+# Private REST API endpoints
 ACCOUNTS_PATH_URL = "/balances"
-MY_TRADES_PATH_URL = "/order"
+MY_TRADES_PATH_URL = "/trade"
 ORDER_PATH_URL = "/order"
-WSS_TOKEN_URL = "/ws-token"
-XT_USER_STREAM_PATH_URL = "/userDataStream"
+OPEN_ORDER_PATH_URL = "open-order"
+GET_ACCOUNT_LISTENKEY = "/ws-token"
 
-WS_HEARTBEAT_TIME_INTERVAL = 30
+WS_HEARTBEAT_TIME_INTERVAL = 15
 
-# Xt params
+# Websocket event types
+DIFF_EVENT_TYPE = "depth_update"
+TRADE_EVENT_TYPE = "trade"
 
+
+# XT params
 SIDE_BUY = "BUY"
 SIDE_SELL = "SELL"
 
 TIME_IN_FORCE_GTC = "GTC"  # Good till cancelled
 TIME_IN_FORCE_IOC = "IOC"  # Immediate or cancel
 TIME_IN_FORCE_FOK = "FOK"  # Fill or kill
-TIME_IN_FORCE_GTX = "GTX"  # Revoke if unable to become a pending party
 
-# Rate Limit Type
-REQUEST_WEIGHT = "REQUEST_WEIGHT"
-ORDERS = "ORDERS"
-ORDERS_24HR = "ORDERS_24HR"
-RAW_REQUESTS = "RAW_REQUESTS"
+XT_VALIDATE_ALGORITHMS = "HmacSHA256"
+XT_VALIDATE_RECVWINDOW = "5000"
+XT_VALIDATE_CONTENTTYPE_URLENCODE = "application/x-www-form-urlencoded"
+XT_VALIDATE_CONTENTTYPE_JSON = "application/json;charset=UTF-8"
 
-# Rate Limit time intervals
-ONE_MINUTE = 60
-ONE_SECOND = 1
-ONE_DAY = 86400
-
-MAX_REQUEST = 5000
 
 # Order States
 ORDER_STATE = {
@@ -68,52 +60,25 @@ ORDER_STATE = {
     "EXPIRED": OrderState.FAILED,
 }
 
-# Websocket event types
-DIFF_EVENT_TYPE = "depth_update"
-TRADE_EVENT_TYPE = "trade"
+
+# Rate Limit time intervals
+ONE_MINUTE = 60
+ONE_SECOND = 1
+ONE_DAY = 86400
+
+SINGLE_SYMBOL = 100
+MULTIPLE_SYMBOLS = 10
+
+# A single rate limit id for managing orders: GET open-orders, order/trade details, DELETE cancel order.
+MANAGE_ORDER = "ManageOrder"
 
 RATE_LIMITS = [
-    # Pools
-    RateLimit(limit_id=REQUEST_WEIGHT, limit=6000, time_interval=ONE_MINUTE),
-    RateLimit(limit_id=ORDERS, limit=50, time_interval=10 * ONE_SECOND),
-    RateLimit(limit_id=ORDERS_24HR, limit=160000, time_interval=ONE_DAY),
-    RateLimit(limit_id=RAW_REQUESTS, limit=61000, time_interval= 5 * ONE_MINUTE),
-    # Weighted Limits
-    RateLimit(limit_id=TICKER_PRICE_CHANGE_PATH_URL, limit=MAX_REQUEST, time_interval=ONE_MINUTE,
-              linked_limits=[LinkedLimitWeightPair(REQUEST_WEIGHT, 2),
-                             LinkedLimitWeightPair(RAW_REQUESTS, 1)]),
-    RateLimit(limit_id=TICKER_BOOK_PATH_URL, limit=MAX_REQUEST, time_interval=ONE_MINUTE,
-              linked_limits=[LinkedLimitWeightPair(REQUEST_WEIGHT, 4),
-                             LinkedLimitWeightPair(RAW_REQUESTS, 1)]),
-    RateLimit(limit_id=EXCHANGE_INFO_PATH_URL, limit=MAX_REQUEST, time_interval=ONE_MINUTE,
-              linked_limits=[LinkedLimitWeightPair(REQUEST_WEIGHT, 20),
-                             LinkedLimitWeightPair(RAW_REQUESTS, 1)]),
-    RateLimit(limit_id=SNAPSHOT_PATH_URL, limit=MAX_REQUEST, time_interval=ONE_MINUTE,
-              linked_limits=[LinkedLimitWeightPair(REQUEST_WEIGHT, 100),
-                             LinkedLimitWeightPair(RAW_REQUESTS, 1)]),
-    RateLimit(limit_id=XT_USER_STREAM_PATH_URL, limit=MAX_REQUEST, time_interval=ONE_MINUTE,
-              linked_limits=[LinkedLimitWeightPair(REQUEST_WEIGHT, 2),
-                             LinkedLimitWeightPair(RAW_REQUESTS, 1)]),
-    RateLimit(limit_id=SERVER_TIME_PATH_URL, limit=MAX_REQUEST, time_interval=ONE_MINUTE,
-              linked_limits=[LinkedLimitWeightPair(REQUEST_WEIGHT, 1),
-                             LinkedLimitWeightPair(RAW_REQUESTS, 1)]),
-    RateLimit(limit_id=PING_PATH_URL, limit=MAX_REQUEST, time_interval=ONE_MINUTE,
-              linked_limits=[LinkedLimitWeightPair(REQUEST_WEIGHT, 1),
-                             LinkedLimitWeightPair(RAW_REQUESTS, 1)]),
-    RateLimit(limit_id=ACCOUNTS_PATH_URL, limit=MAX_REQUEST, time_interval=ONE_MINUTE,
-              linked_limits=[LinkedLimitWeightPair(REQUEST_WEIGHT, 20),
-                             LinkedLimitWeightPair(RAW_REQUESTS, 1)]),
-    RateLimit(limit_id=MY_TRADES_PATH_URL, limit=MAX_REQUEST, time_interval=ONE_MINUTE,
-              linked_limits=[LinkedLimitWeightPair(REQUEST_WEIGHT, 20),
-                             LinkedLimitWeightPair(RAW_REQUESTS, 1)]),
-    RateLimit(limit_id=ORDER_PATH_URL, limit=MAX_REQUEST, time_interval=ONE_MINUTE,
-              linked_limits=[LinkedLimitWeightPair(REQUEST_WEIGHT, 4),
-                             LinkedLimitWeightPair(ORDERS, 1),
-                             LinkedLimitWeightPair(ORDERS_24HR, 1),
-                             LinkedLimitWeightPair(RAW_REQUESTS, 1)])
+    RateLimit(limit_id=TICKER_PRICE_CHANGE_PATH_URL, limit=SINGLE_SYMBOL, time_interval=ONE_SECOND),
+    RateLimit(limit_id=EXCHANGE_INFO_PATH_URL, limit=MULTIPLE_SYMBOLS, time_interval=ONE_SECOND),
+    RateLimit(limit_id=SNAPSHOT_PATH_URL, limit=2 * SINGLE_SYMBOL, time_interval=ONE_SECOND),
+    RateLimit(limit_id=SERVER_TIME_PATH_URL, limit=100, time_interval=ONE_SECOND),
+    RateLimit(limit_id=ACCOUNTS_PATH_URL, limit=10, time_interval=ONE_SECOND),
+    RateLimit(limit_id=MANAGE_ORDER, limit=500, time_interval=ONE_SECOND),
+    RateLimit(limit_id=ORDER_PATH_URL, limit=50, time_interval=ONE_SECOND),
+    RateLimit(limit_id=GET_ACCOUNT_LISTENKEY, limit=10, time_interval=ONE_SECOND),
 ]
-
-ORDER_NOT_EXIST_ERROR_CODE = -2013
-ORDER_NOT_EXIST_MESSAGE = "Order does not exist"
-UNKNOWN_ORDER_ERROR_CODE = -2011
-UNKNOWN_ORDER_MESSAGE = "Unknown order sent"

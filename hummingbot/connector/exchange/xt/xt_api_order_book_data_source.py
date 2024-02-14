@@ -16,18 +16,19 @@ if TYPE_CHECKING:
 
 
 class XtAPIOrderBookDataSource(OrderBookTrackerDataSource):
-    HEARTBEAT_TIME_INTERVAL = 30.0
     TRADE_STREAM_ID = 1
     DIFF_STREAM_ID = 2
     ONE_HOUR = 60 * 60
 
     _logger: Optional[HummingbotLogger] = None
 
-    def __init__(self,
-                 trading_pairs: List[str],
-                 connector: 'XtExchange',
-                 api_factory: WebAssistantsFactory,
-                 domain: str = CONSTANTS.DEFAULT_DOMAIN):
+    def __init__(
+        self,
+        trading_pairs: List[str],
+        connector: "XtExchange",
+        api_factory: WebAssistantsFactory,
+        domain: str = CONSTANTS.DEFAULT_DOMAIN,
+    ):
         super().__init__(trading_pairs)
         self._connector = connector
         self._trade_messages_queue_key = CONSTANTS.TRADE_EVENT_TYPE
@@ -35,22 +36,18 @@ class XtAPIOrderBookDataSource(OrderBookTrackerDataSource):
         self._domain = domain
         self._api_factory = api_factory
 
-    async def get_last_traded_prices(self,
-                                     trading_pairs: List[str],
-                                     domain: Optional[str] = None) -> Dict[str, float]:
+    async def get_last_traded_prices(self, trading_pairs: List[str], domain: Optional[str] = None) -> Dict[str, float]:
         return await self._connector.get_last_traded_prices(trading_pairs=trading_pairs)
 
     async def _request_order_book_snapshot(self, trading_pair: str) -> Dict[str, Any]:
         """
         Retrieves a copy of the full order book from the exchange, for a particular trading pair.
-
         :param trading_pair: the trading pair for which the order book will be retrieved
-
         :return: the response from the exchange (JSON dictionary)
         """
         params = {
             "symbol": await self._connector.exchange_symbol_associated_to_pair(trading_pair=trading_pair),
-            "limit": "1000"
+            "limit": 500,
         }
 
         rest_assistant = await self._api_factory.get_rest_assistant()
@@ -61,7 +58,28 @@ class XtAPIOrderBookDataSource(OrderBookTrackerDataSource):
             throttler_limit_id=CONSTANTS.SNAPSHOT_PATH_URL,
         )
 
-        return data
+        return data["result"]
+
+    async def listen_for_subscriptions(self):
+        """
+        Connects to the trade events and order diffs websocket endpoints and listens to the messages sent by the
+        exchange. Each message is stored in its own queue.
+        """
+        ws: Optional[WSAssistant] = None
+        while True:
+            try:
+                ws: WSAssistant = await self._connected_websocket_assistant()
+                await self._subscribe_channels(ws)
+                await self._process_websocket_messages(websocket_assistant=ws)
+            except asyncio.CancelledError:
+                raise
+            except Exception:
+                self.logger().exception(
+                    "Unexpected error occurred when listening to order book streams. Retrying in 5 seconds...",
+                )
+                await self._sleep(1.0)
+            finally:
+                ws and await ws.disconnect()
 
     async def _subscribe_channels(self, ws: WSAssistant):
         """
@@ -71,30 +89,15 @@ class XtAPIOrderBookDataSource(OrderBookTrackerDataSource):
         try:
             trade_params = []
             depth_params = []
-            depth_update = []
             for trading_pair in self._trading_pairs:
                 symbol = await self._connector.exchange_symbol_associated_to_pair(trading_pair=trading_pair)
                 trade_params.append(f"trade@{symbol.lower()}")
-                depth_params.append(f"depth@{symbol.lower()},20")
-                depth_update.append(f"depth_update@{symbol.lower()}")
-            payload = {
-                "method": "subscribe",
-                "params": depth_update,
-                "id": 1
-            }
+                depth_params.append(f"depth_update@{symbol.lower()}")
+            payload = {"method": "subscribe", "params": trade_params, "id": self.TRADE_STREAM_ID}
             subscribe_trade_request: WSJSONRequest = WSJSONRequest(payload=payload)
-            payload = {
-                "method": "subscribe",
-                "params": depth_params,
-                "id": 2
-            }
+
+            payload = {"method": "SUBSCRIBE", "params": depth_params, "id": self.DIFF_STREAM_ID}
             subscribe_orderbook_request: WSJSONRequest = WSJSONRequest(payload=payload)
-            payload = {
-                "method": "subscribe",
-                "params": trade_params,
-                "id": 3
-            }
-            subscribe_trade_request: WSJSONRequest = WSJSONRequest(payload=payload)
 
             await ws.send(subscribe_trade_request)
             await ws.send(subscribe_orderbook_request)
@@ -104,45 +107,50 @@ class XtAPIOrderBookDataSource(OrderBookTrackerDataSource):
             raise
         except Exception:
             self.logger().error(
-                "Unexpected error occurred subscribing to order book trading and delta streams...",
-                exc_info=True
+                "Unexpected error occurred subscribing to order book trading and delta streams...", exc_info=True
             )
             raise
 
     async def _connected_websocket_assistant(self) -> WSAssistant:
         ws: WSAssistant = await self._api_factory.get_ws_assistant()
-        await ws.connect(ws_url=CONSTANTS.WSS_URL.format(self._domain),
-                         ping_timeout=CONSTANTS.WS_HEARTBEAT_TIME_INTERVAL)
+        await ws.connect(
+            ws_url=CONSTANTS.WSS_URL_PUBLIC.format(self._domain), ping_timeout=CONSTANTS.WS_HEARTBEAT_TIME_INTERVAL
+        )
         return ws
 
     async def _order_book_snapshot(self, trading_pair: str) -> OrderBookMessage:
         snapshot: Dict[str, Any] = await self._request_order_book_snapshot(trading_pair)
         snapshot_timestamp: float = time.time()
         snapshot_msg: OrderBookMessage = XtOrderBook.snapshot_message_from_exchange(
-            snapshot,
-            snapshot_timestamp,
-            metadata={"trading_pair": trading_pair}
+            snapshot, snapshot_timestamp, metadata={"trading_pair": trading_pair}
         )
         return snapshot_msg
 
     async def _parse_trade_message(self, raw_message: Dict[str, Any], message_queue: asyncio.Queue):
-        if "result" not in raw_message:
-            trading_pair = await self._connector.trading_pair_associated_to_exchange_symbol(symbol=raw_message["s"])
-            trade_message = XtOrderBook.trade_message_from_exchange(
-                raw_message, {"trading_pair": trading_pair})
+        if len(raw_message) > 0 and ("data" in raw_message and "topic" in raw_message):
+            trading_pair = await self._connector.trading_pair_associated_to_exchange_symbol(
+                symbol=raw_message["data"]["s"]
+            )
+            trade_message = XtOrderBook.trade_message_from_exchange(raw_message["data"], {"trading_pair": trading_pair})
             message_queue.put_nowait(trade_message)
 
     async def _parse_order_book_diff_message(self, raw_message: Dict[str, Any], message_queue: asyncio.Queue):
-        if "result" not in raw_message:
-            trading_pair = await self._connector.trading_pair_associated_to_exchange_symbol(symbol=raw_message["s"])
+        if len(raw_message) > 0 and ("data" in raw_message and "topic" in raw_message):
+            trading_pair = await self._connector.trading_pair_associated_to_exchange_symbol(
+                symbol=raw_message["data"]["s"]
+            )
             order_book_message: OrderBookMessage = XtOrderBook.diff_message_from_exchange(
-                raw_message, time.time(), {"trading_pair": trading_pair})
+                raw_message["data"], time.time(), {"trading_pair": trading_pair}
+            )
             message_queue.put_nowait(order_book_message)
 
     def _channel_originating_message(self, event_message: Dict[str, Any]) -> str:
         channel = ""
-        if "result" not in event_message:
-            event_type = event_message.get("e")
-            channel = (self._diff_messages_queue_key if event_type == CONSTANTS.DIFF_EVENT_TYPE
-                       else self._trade_messages_queue_key)
+        if "data" in event_message:
+            event_type = event_message.get("topic")
+            channel = (
+                self._diff_messages_queue_key
+                if event_type == CONSTANTS.DIFF_EVENT_TYPE
+                else self._trade_messages_queue_key
+            )
         return channel
