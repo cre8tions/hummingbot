@@ -42,6 +42,7 @@ connector_status = {
     'vertex_testnet': 'bronze',
     'xeggex': 'green',
     'nonkyc': 'green',
+    'xt': 'green',
     # gateway connectors
     'curve': 'bronze',
     'dexalot': 'bronze',
