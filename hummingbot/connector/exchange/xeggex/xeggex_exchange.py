@@ -372,7 +372,7 @@ class XeggexExchange(ExchangeBase):
         return self.order_book_tracker.order_books[trading_pair]
 
     def buy(
-        self, trading_pair: str, amount: Decimal, order_type=OrderType.MARKET, price: Decimal = s_decimal_NaN, **kwargs
+        self, trading_pair: str, amount: Decimal, order_type=OrderType.LIMIT, price: Decimal = s_decimal_NaN, **kwargs
     ) -> str:
         """
         Buys an amount of base asset (of the given trading pair). This function returns immediately.
@@ -388,7 +388,7 @@ class XeggexExchange(ExchangeBase):
         return order_id
 
     def sell(
-        self, trading_pair: str, amount: Decimal, order_type=OrderType.MARKET, price: Decimal = s_decimal_NaN, **kwargs
+        self, trading_pair: str, amount: Decimal, order_type=OrderType.LIMIT, price: Decimal = s_decimal_NaN, **kwargs
     ) -> str:
         """
         Sells an amount of base asset (of the given trading pair). This function returns immediately.
