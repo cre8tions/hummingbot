@@ -73,9 +73,9 @@ class XtAPIOrderBookDataSource(OrderBookTrackerDataSource):
                 await self._process_websocket_messages(websocket_assistant=ws)
             except asyncio.CancelledError:
                 raise
-            except Exception:
+            except Exception as e:
                 self.logger().exception(
-                    "Unexpected error occurred when listening to order book streams. Retrying in 5 seconds...",
+                    f"Unexpected error occurred when listening to order book streams. Retrying in 5 seconds...{e}",
                 )
                 await self._sleep(1.0)
             finally:
@@ -93,11 +93,13 @@ class XtAPIOrderBookDataSource(OrderBookTrackerDataSource):
                 symbol = await self._connector.exchange_symbol_associated_to_pair(trading_pair=trading_pair)
                 trade_params.append(f"trade@{symbol.lower()}")
                 depth_params.append(f"depth_update@{symbol.lower()}")
-            payload = {"method": "subscribe", "params": trade_params, "id": self.TRADE_STREAM_ID}
-            subscribe_trade_request: WSJSONRequest = WSJSONRequest(payload=payload)
+            tradepayload = {"method": "subscribe", "params": trade_params, "id": self.TRADE_STREAM_ID}
+            subscribe_trade_request: WSJSONRequest = WSJSONRequest(payload=tradepayload)
+            self.logger().info(f"tradepayload: {tradepayload}")
 
-            payload = {"method": "SUBSCRIBE", "params": depth_params, "id": self.DIFF_STREAM_ID}
-            subscribe_orderbook_request: WSJSONRequest = WSJSONRequest(payload=payload)
+            depthpayload = {"method": "subscribe", "params": depth_params, "id": self.DIFF_STREAM_ID}
+            subscribe_orderbook_request: WSJSONRequest = WSJSONRequest(payload=depthpayload)
+            self.logger().info(f"depthpayload: {depthpayload}")
 
             await ws.send(subscribe_trade_request)
             await ws.send(subscribe_orderbook_request)
@@ -105,9 +107,9 @@ class XtAPIOrderBookDataSource(OrderBookTrackerDataSource):
             self.logger().info("Subscribed to public order book and trade channels...")
         except asyncio.CancelledError:
             raise
-        except Exception:
+        except Exception as e:
             self.logger().error(
-                "Unexpected error occurred subscribing to order book trading and delta streams...", exc_info=True
+                f"Unexpected error occurred subscribing to order book trading and delta streams...{e}", exc_info=True
             )
             raise
 

@@ -19,13 +19,13 @@ class SimpleArbitrage(ScriptStrategyBase):
     A simplified version of Hummingbot arbitrage strategy, this bot checks the Volume Weighted Average Price for
     bid and ask in two exchanges and if it finds a profitable opportunity, it will trade the tokens.
     """
-    order_amount = Decimal("500.0")  # in base asset
-    min_profitability = Decimal("3")  # in percentage
-    base = "FSC"
+    order_amount = Decimal("0.05")  # in base asset
+    min_profitability = Decimal("1")  # in percentage
+    base = "DOT"
     quote = "USDT"
     trading_pair = f"{base}-{quote}"
     exchange_A = "xeggex"
-    exchange_B = "nonkyc"
+    exchange_B = "xt"
 
     markets = {exchange_A: {trading_pair},
                exchange_B: {trading_pair}}

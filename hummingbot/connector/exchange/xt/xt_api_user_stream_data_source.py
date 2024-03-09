@@ -86,8 +86,8 @@ class XtAPIUserStreamDataSource(UserStreamTrackerDataSource):
             await websocket_assistant.send(subscribe_request)
         except asyncio.CancelledError:
             raise
-        except Exception:
-            self.logger().exception("Unexpected error occurred subscribing to private account and order streams...")
+        except Exception as e:
+            self.logger().exception(f"Unexpected error occurred subscribing to private account and order streams...{e}")
             raise
 
     async def _process_websocket_messages(self, websocket_assistant: WSAssistant, queue: asyncio.Queue):
