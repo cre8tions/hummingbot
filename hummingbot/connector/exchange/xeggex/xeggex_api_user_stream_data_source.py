@@ -1,93 +1,71 @@
-#!/usr/bin/env python
-import asyncio
-import logging
-import time
-from typing import Any, AsyncIterable, List, Optional
+from typing import TYPE_CHECKING, List, Optional
 
+from hummingbot.connector.exchange.xeggex import xeggex_constants as CONSTANTS
+from hummingbot.connector.exchange.xeggex.xeggex_auth import XeggexAuth
 from hummingbot.core.data_type.user_stream_tracker_data_source import UserStreamTrackerDataSource
+from hummingbot.core.web_assistant.connections.data_types import WSJSONRequest
+from hummingbot.core.web_assistant.web_assistants_factory import WebAssistantsFactory
+from hummingbot.core.web_assistant.ws_assistant import WSAssistant
 from hummingbot.logger import HummingbotLogger
 
-from .xeggex_auth import XeggexAuth
-from .xeggex_constants import Constants
-from .xeggex_utils import XeggexAPIError
-from .xeggex_websocket import XeggexWebsocket
+if TYPE_CHECKING:
+    from hummingbot.connector.exchange.xeggex.xeggex_exchange import XeggexExchange
 
 
 class XeggexAPIUserStreamDataSource(UserStreamTrackerDataSource):
 
+    HEARTBEAT_TIME_INTERVAL = 30.0
+
     _logger: Optional[HummingbotLogger] = None
 
-    @classmethod
-    def logger(cls) -> HummingbotLogger:
-        if cls._logger is None:
-            cls._logger = logging.getLogger(__name__)
-        return cls._logger
-
-    def __init__(self, xeggex_auth: XeggexAuth, trading_pairs: Optional[List[str]] = []):
-        self._xeggex_auth: XeggexAuth = xeggex_auth
-        self._ws: XeggexWebsocket = None
-        self._trading_pairs = trading_pairs
-        self._current_listen_key = None
-        self._listen_for_user_stream_task = None
-        self._last_recv_time: float = 0
+    def __init__(
+        self,
+        auth: XeggexAuth,
+        trading_pairs: List[str],
+        connector: "XeggexExchange",
+        api_factory: WebAssistantsFactory,
+        domain: str = CONSTANTS.DEFAULT_DOMAIN,
+    ):
         super().__init__()
+        self._auth: XeggexAuth = auth
+        self._domain = domain
+        self._api_factory = api_factory
 
-    @property
-    def last_recv_time(self) -> float:
-        return self._last_recv_time
-
-    async def _ws_request_balances(self):
-        return await self._ws.request(Constants.WS_METHODS["USER_BALANCE"])
-
-    async def _listen_to_orders_trades_balances(self) -> AsyncIterable[Any]:
+    async def _connected_websocket_assistant(self) -> WSAssistant:
         """
-        Subscribe to active orders via web socket
+        Creates an instance of WSAssistant connected to the exchange
         """
 
-        try:
-            self._ws = XeggexWebsocket(self._xeggex_auth)
+        ws: WSAssistant = await self._get_ws_assistant()
+        await ws.connect(ws_url=CONSTANTS.WS_URL, ping_timeout=CONSTANTS.WS_HEARTBEAT_TIME_INTERVAL)
+        await self._authenticate_ws_connection(ws)
+        return ws
 
-            await self._ws.connect()
-
-            await self._ws.subscribe(Constants.WS_SUB["USER_ORDERS_TRADES"], None, {})
-
-            event_methods = [
-                Constants.WS_METHODS["USER_ORDERS"],
-                Constants.WS_METHODS["USER_TRADES"],
-            ]
-
-            async for msg in self._ws.on_message():
-                self._last_recv_time = time.time()
-
-                if msg.get("params", msg.get("result", None)) is None:
-                    continue
-                elif msg.get("method", None) in event_methods:
-                    await self._ws_request_balances()
-                yield msg
-        except Exception as e:
-            raise e
-        finally:
-            await self._ws.disconnect()
-            await asyncio.sleep(5)
-
-    async def listen_for_user_stream(self, output: asyncio.Queue):
+    async def _subscribe_channels(self, websocket_assistant: WSAssistant):
         """
-        Subscribe to user stream via web socket, and keep the connection open for incoming messages
-
-        :param output: an async queue where the incoming messages are stored
+        Subscribes to the trade events and diff orders events through the provided websocket connection.
+        :param websocket_assistant: the websocket assistant used to connect to the exchange
         """
+        subscribe_user_orders_payload = {"method": CONSTANTS.WS_METHOD_SUBSCRIBE_USER_ORDERS, "params": {}}
+        subscribe_user_balance_payload = {"method": CONSTANTS.WS_METHOD_SUBSCRIBE_USER_BALANCE, "params": {}}
 
-        while True:
-            try:
-                async for msg in self._listen_to_orders_trades_balances():
-                    output.put_nowait(msg)
-            except asyncio.CancelledError:
-                raise
-            except XeggexAPIError as e:
-                self.logger().error(e.error_payload.get('error'), exc_info=True)
-                raise
-            except Exception:
-                self.logger().error(
-                    f"Unexpected error with {Constants.EXCHANGE_NAME} WebSocket connection. "
-                    "Retrying after 30 seconds...", exc_info=True)
-                await asyncio.sleep(30.0)
+        subscribe_user_orders_request: WSJSONRequest = WSJSONRequest(payload=subscribe_user_orders_payload)
+        await websocket_assistant.send(subscribe_user_orders_request)
+        self.logger().info("Subscribed to user orders")
+        subscribe_user_balance_request: WSJSONRequest = WSJSONRequest(payload=subscribe_user_balance_payload)
+        await websocket_assistant.send(subscribe_user_balance_request)
+        self.logger().info("Subscribed to user balance")
+        pass
+
+    async def _get_ws_assistant(self) -> WSAssistant:
+        if self._ws_assistant is None:
+            self._ws_assistant = await self._api_factory.get_ws_assistant()
+        return self._ws_assistant
+
+    async def _authenticate_ws_connection(self, ws: WSAssistant):
+        """
+        Sends the authentication message.
+        :param ws: the websocket assistant used to connect to the exchange
+        """
+        auth_message: WSJSONRequest = WSJSONRequest(payload=self._auth.generate_ws_authentication_message())
+        await ws.send(auth_message)

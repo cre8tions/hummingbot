@@ -1,96 +1,86 @@
-import logging
-from typing import Any, Dict, List, Optional
+from typing import Dict, Optional
 
-from hummingbot.connector.exchange.xeggex.xeggex_constants import Constants
-from hummingbot.connector.exchange.xeggex.xeggex_order_book_message import XeggexOrderBookMessage
+from hummingbot.connector.exchange.xeggex.xeggex_utils import convert_fromiso_to_unix_timestamp
+from hummingbot.core.data_type.common import TradeType
 from hummingbot.core.data_type.order_book import OrderBook
 from hummingbot.core.data_type.order_book_message import OrderBookMessage, OrderBookMessageType
-from hummingbot.logger import HummingbotLogger
-
-_logger = None
 
 
 class XeggexOrderBook(OrderBook):
-    @classmethod
-    def logger(cls) -> HummingbotLogger:
-        global _logger
-        if _logger is None:
-            _logger = logging.getLogger(__name__)
-        return _logger
 
     @classmethod
-    def snapshot_message_from_exchange(cls,
-                                       msg: Dict[str, any],
-                                       timestamp: float,
-                                       metadata: Optional[Dict] = None):
+    def snapshot_message_from_exchange(
+        cls, msg: Dict[str, any], timestamp: float, metadata: Optional[Dict] = None
+    ) -> OrderBookMessage:
         """
-        Convert json snapshot data into standard OrderBookMessage format
-        :param msg: json snapshot data from live web socket stream
-        :param timestamp: timestamp attached to incoming data
-        :return: XeggexOrderBookMessage
+        Creates a snapshot message with the order book snapshot message
+        :param msg: the response from the exchange when requesting the order book snapshot
+        :param timestamp: the snapshot timestamp
+        :param metadata: a dictionary with extra information to add to the snapshot data
+        :return: a snapshot message with the snapshot information received from the exchange
         """
-
         if metadata:
             msg.update(metadata)
 
-        return XeggexOrderBookMessage(
-            message_type=OrderBookMessageType.SNAPSHOT,
-            content=msg,
-            timestamp=timestamp
+        return OrderBookMessage(
+            OrderBookMessageType.SNAPSHOT,
+            {"trading_pair": msg["trading_pair"], "update_id": timestamp, "bids": msg["bids"], "asks": msg["asks"]},
+            timestamp=timestamp,
         )
 
     @classmethod
-    def diff_message_from_exchange(cls,
-                                   msg: Dict[str, any],
-                                   timestamp: Optional[float] = None,
-                                   metadata: Optional[Dict] = None):
+    def diff_message_from_exchange(
+        cls, msg: Dict[str, any], timestamp: Optional[float] = None, metadata: Optional[Dict] = None
+    ) -> OrderBookMessage:
         """
-        Convert json diff data into standard OrderBookMessage format
-        :param msg: json diff data from live web socket stream
-        :param timestamp: timestamp attached to incoming data
-        :return: XeggexOrderBookMessage
+        Creates a diff message with the changes in the order book received from the exchange
+        :param msg: the changes in the order book
+        :param timestamp: the timestamp of the difference
+        :param metadata: a dictionary with extra information to add to the difference data
+        :return: a diff message with the changes in the order book notified by the exchange
         """
+        if metadata:
+            msg.update(metadata)
+        orderbookdata = msg["params"]
 
+        formatted_asks = [[ask["price"], str(ask["quantity"])] for ask in orderbookdata["asks"]]
+        formatted_bids = [[ask["price"], str(ask["quantity"])] for ask in orderbookdata["bids"]]
+
+        return OrderBookMessage(
+            OrderBookMessageType.DIFF,
+            {
+                "trading_pair": msg["trading_pair"],
+                "update_id": convert_fromiso_to_unix_timestamp(orderbookdata["timestamp"]),
+                "bids": formatted_bids,
+                "asks": formatted_asks,
+            },
+            timestamp=timestamp,
+        )
+
+    @classmethod
+    def trade_message_from_exchange(cls, msg: Dict[str, any], metadata: Optional[Dict] = None):
+        """
+        Creates a trade message with the information from the trade event sent by the exchange
+        :param msg: the trade event details sent by the exchange
+        :param metadata: a dictionary with extra information to add to trade message
+        :return: a trade message with the details of the trade as provided by the exchange
+        """
         if metadata:
             msg.update(metadata)
 
-        return XeggexOrderBookMessage(
-            message_type=OrderBookMessageType.DIFF,
-            content=msg,
-            timestamp=timestamp
+        tradedata = msg["params"]["data"][0]
+        ts = tradedata["timestampms"]
+        return OrderBookMessage(
+            OrderBookMessageType.TRADE,
+            {
+                "trading_pair": msg["trading_pair"],
+                "trade_type": (
+                    float(TradeType.SELL.value) if tradedata["side"] == "sell" else float(TradeType.BUY.value)
+                ),
+                "trade_id": tradedata["id"],
+                "update_id": ts,
+                "price": tradedata["price"],
+                "amount": tradedata["quantity"],
+            },
+            timestamp=ts * 1e-3,
         )
-
-    @classmethod
-    def trade_message_from_exchange(cls,
-                                    msg: Dict[str, Any],
-                                    timestamp: Optional[float] = None,
-                                    metadata: Optional[Dict] = None):
-        """
-        Convert a trade data into standard OrderBookMessage format
-        :param record: a trade data from the database
-        :return: XeggexOrderBookMessage
-        """
-
-        if metadata:
-            msg.update(metadata)
-
-        msg.update({
-            "exchange_order_id": msg.get("id"),
-            "trade_type": msg.get("side"),
-            "price": msg.get("price"),
-            "amount": msg.get("quantity"),
-        })
-
-        return XeggexOrderBookMessage(
-            message_type=OrderBookMessageType.TRADE,
-            content=msg,
-            timestamp=timestamp
-        )
-
-    @classmethod
-    def from_snapshot(cls, snapshot: OrderBookMessage):
-        raise NotImplementedError(Constants.EXCHANGE_NAME + " order book needs to retain individual order data.")
-
-    @classmethod
-    def restore_from_snapshot_and_diffs(self, snapshot: OrderBookMessage, diffs: List[OrderBookMessage]):
-        raise NotImplementedError(Constants.EXCHANGE_NAME + " order book needs to retain individual order data.")
