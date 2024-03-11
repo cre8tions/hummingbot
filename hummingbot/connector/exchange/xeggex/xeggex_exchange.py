@@ -179,6 +179,7 @@ class XeggexExchange(ExchangePyBase):
     ) -> Tuple[str, float]:
         order_result = None
         amount_str = f"{amount:f}"
+        price_str = f"{price:f}"
         type_str = XeggexExchange.Xeggex_order_type(order_type)
         side_str = CONSTANTS.SIDE_BUY if trade_type is TradeType.BUY else CONSTANTS.SIDE_SELL
         symbol = await self.exchange_symbol_associated_to_pair(trading_pair=trading_pair)
@@ -189,10 +190,11 @@ class XeggexExchange(ExchangePyBase):
             "quantity": amount_str,
             "type": type_str,
             "userProvidedId": order_id,
+            "price": price_str,
         }
-        if order_type is OrderType.LIMIT or order_type is OrderType.LIMIT_MAKER:
-            price_str = f"{price:f}"
-            api_params["price"] = price_str
+        # if order_type is OrderType.LIMIT or order_type is OrderType.LIMIT_MAKER:
+        #     price_str = f"{price:f}"
+        #     api_params["price"] = price_str
 
         try:
             order_result = await self._api_post(

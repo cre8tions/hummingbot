@@ -195,13 +195,25 @@ class XtExchange(ExchangePyBase):
         if order_type == OrderType.LIMIT:
             api_params["timeInForce"] = CONSTANTS.TIME_IN_FORCE_GTC
 
-        order_result = await self._api_post(path_url=CONSTANTS.ORDER_PATH_URL, data=api_params, is_auth_required=True)
+        try:
+            order_result = await self._api_post(path_url=CONSTANTS.ORDER_PATH_URL, data=api_params, is_auth_required=True)
+            if "result" not in order_result or order_result["result"] is None:
+                raise
 
-        if "result" not in order_result or order_result["result"] is None:
-            raise
+            o_id = str(order_result["result"]["orderId"])
+            transact_time = self.current_timestamp
+        except IOError as e:
+            error_description = str(e)
+            is_server_overloaded = (
+                "503" in error_description
+                and "Unknown error, please check your request or try again later." in error_description
+            )
+            if is_server_overloaded:
+                o_id = "UNKNOWN"
+                transact_time = self._time_synchronizer.time()
+            else:
+                raise
 
-        o_id = str(order_result["result"]["orderId"])
-        transact_time = self.current_timestamp
         return (o_id, transact_time)
 
     async def _place_cancel(self, order_id: str, tracked_order: InFlightOrder):
@@ -391,7 +403,7 @@ class XtExchange(ExchangePyBase):
 
                         order_update = OrderUpdate(
                             trading_pair=tracked_order.trading_pair,
-                            update_timestamp=order_update["t"] * 1e-3,
+                            update_timestamp=order_update["ct"] * 1e-3,
                             new_state=CONSTANTS.ORDER_STATE[order_update["st"]],
                             client_order_id=tracked_order.client_order_id,
                             exchange_order_id=str(order_update["i"]),
@@ -429,10 +441,7 @@ class XtExchange(ExchangePyBase):
                 )
                 await self._order_tracker.process_order_not_found(client_order_id)
             except Exception as request_error:
-                self.logger().network(
-                    f"Error fetching status update for the order {order.client_order_id}: {request_error}.",
-                    app_warning_msg=f"Failed to fetch status update for the order {order.client_order_id}.",
-                )
+                self.logger().network(f"Error fetching status update for the order {order.client_order_id}: {request_error}.")
                 await self._order_tracker.process_order_not_found(order.client_order_id)
 
     async def _all_trade_updates_for_order(self, order: InFlightOrder) -> List[TradeUpdate]:
@@ -500,11 +509,15 @@ class XtExchange(ExchangePyBase):
         if new_state == OrderState.CANCELED:
             await self._cancelled_order_handler(client_order_id, updated_order_data)
 
+        time = updated_order_data["time"] * 1e-3
+        if updated_order_data["updatedTime"] is not None:
+            time = updated_order_data["updatedTime"] * 1e-3
+
         order_update = OrderUpdate(
             client_order_id=tracked_order.client_order_id,
             exchange_order_id=str(updated_order_data["orderId"]),
             trading_pair=tracked_order.trading_pair,
-            update_timestamp=updated_order_data["updatedTime"] * 1e-3,
+            update_timestamp=time,
             new_state=new_state,
         )
 

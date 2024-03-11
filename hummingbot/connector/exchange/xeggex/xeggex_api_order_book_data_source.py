@@ -16,7 +16,7 @@ if TYPE_CHECKING:
 
 
 class XeggexAPIOrderBookDataSource(OrderBookTrackerDataSource):
-    HEARTBEAT_TIME_INTERVAL = 30.0
+    HEARTBEAT_TIME_INTERVAL = 60.0
     TRADE_STREAM_ID = 1
     DIFF_STREAM_ID = 2
     ONE_HOUR = 60 * 60

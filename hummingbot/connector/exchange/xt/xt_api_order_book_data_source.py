@@ -47,7 +47,7 @@ class XtAPIOrderBookDataSource(OrderBookTrackerDataSource):
         """
         params = {
             "symbol": await self._connector.exchange_symbol_associated_to_pair(trading_pair=trading_pair),
-            "limit": 500,
+            "limit": 250,
         }
 
         rest_assistant = await self._api_factory.get_rest_assistant()
@@ -95,11 +95,11 @@ class XtAPIOrderBookDataSource(OrderBookTrackerDataSource):
                 depth_params.append(f"depth_update@{symbol.lower()}")
             tradepayload = {"method": "subscribe", "params": trade_params, "id": self.TRADE_STREAM_ID}
             subscribe_trade_request: WSJSONRequest = WSJSONRequest(payload=tradepayload)
-            self.logger().info(f"tradepayload: {tradepayload}")
+            # self.logger().info(f"tradepayload: {tradepayload}")
 
             depthpayload = {"method": "subscribe", "params": depth_params, "id": self.DIFF_STREAM_ID}
             subscribe_orderbook_request: WSJSONRequest = WSJSONRequest(payload=depthpayload)
-            self.logger().info(f"depthpayload: {depthpayload}")
+            # self.logger().info(f"depthpayload: {depthpayload}")
 
             await ws.send(subscribe_trade_request)
             await ws.send(subscribe_orderbook_request)
