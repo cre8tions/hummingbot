@@ -7,17 +7,17 @@ DEFAULT_DOMAIN = "xt_perpetual_main"
 
 DEFAULT_TIME_IN_FORCE = "GoodTillCancel"
 
-REST_URLS = {"xt_perpetual_main": "https://api.xt.com/",
+REST_URLS = {"xt_perpetual_main": "https://fapi.xt.com/",
              "xt_perpetual_testnet": "https://api-testnet.xt.com/"}
-WSS_NON_LINEAR_PUBLIC_URLS = {"xt_perpetual_main": "wss://stream.xt.com/realtime",
+WSS_NON_LINEAR_PUBLIC_URLS = {"xt_perpetual_main": "wss://stream.xt.com/ws/market",
                               "xt_perpetual_testnet": "wss://stream-testnet.xt.com/realtime"}
 WSS_NON_LINEAR_PRIVATE_URLS = WSS_NON_LINEAR_PUBLIC_URLS
-WSS_LINEAR_PUBLIC_URLS = {"xt_perpetual_main": "wss://stream.xt.com/realtime_public",
+WSS_LINEAR_PUBLIC_URLS = {"xt_perpetual_main": "wss://stream.xt.com/ws/market",
                           "xt_perpetual_testnet": "wss://stream-testnet.xt.com/realtime_public"}
-WSS_LINEAR_PRIVATE_URLS = {"xt_perpetual_main": "wss://stream.xt.com/realtime_private",
+WSS_LINEAR_PRIVATE_URLS = {"xt_perpetual_main": "wss://stream.xt.com/ws/user",
                            "xt_perpetual_testnet": "wss://stream-testnet.xt.com/realtime_private"}
 
-REST_API_VERSION = "v2"
+REST_API_VERSION = "v1"
 
 HBOT_BROKER_ID = "Hummingbot"
 
@@ -69,13 +69,13 @@ GET_PREDICTED_FUNDING_RATE_PATH_URL = {
     NON_LINEAR_MARKET: f"{REST_API_VERSION}/private/funding/predicted-funding"
 }
 GET_POSITIONS_PATH_URL = {
-    LINEAR_MARKET: "private/linear/position/list",
+    LINEAR_MARKET: f"/future/user/{REST_API_VERSION}/position/list",
     NON_LINEAR_MARKET: f"{REST_API_VERSION}/private/position/list"}
 PLACE_ACTIVE_ORDER_PATH_URL = {
-    LINEAR_MARKET: "private/linear/order/create",
+    LINEAR_MARKET: f"/future/trade/{REST_API_VERSION}/order/create",
     NON_LINEAR_MARKET: f"{REST_API_VERSION}/private/order/create"}
 CANCEL_ACTIVE_ORDER_PATH_URL = {
-    LINEAR_MARKET: "private/linear/order/cancel",
+    LINEAR_MARKET: f"/future/trade/{REST_API_VERSION}/order/cancel",
     NON_LINEAR_MARKET: f"{REST_API_VERSION}/private/order/cancel"}
 CANCEL_ALL_ACTIVE_ORDERS_PATH_URL = {
     LINEAR_MARKET: "private/linear/order/cancelAll",
@@ -87,7 +87,7 @@ USER_TRADE_RECORDS_PATH_URL = {
     LINEAR_MARKET: "private/linear/trade/execution/list",
     NON_LINEAR_MARKET: f"{REST_API_VERSION}/private/execution/list"}
 GET_WALLET_BALANCE_PATH_URL = {
-    LINEAR_MARKET: f"{REST_API_VERSION}/private/wallet/balance",
+    LINEAR_MARKET: f"/future/user/{REST_API_VERSION}/balance/list",
     NON_LINEAR_MARKET: f"{REST_API_VERSION}/private/wallet/balance"}
 SET_POSITION_MODE_URL = {
     LINEAR_MARKET: "private/linear/position/switch-mode"}
