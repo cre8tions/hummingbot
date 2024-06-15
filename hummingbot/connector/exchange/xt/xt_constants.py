@@ -35,7 +35,7 @@ XT_VALIDATE_CONTENTTYPE_JSON = "application/json;charset=UTF-8"
 
 
 WS_HEARTBEAT_TIME_INTERVAL = 45
-GET_ACCOUNT_LISTENKEY = "/ws-token"
+GET_ACCOUNT_LISTENKEY = "/v4/ws-token"
 
 # Xt params
 
