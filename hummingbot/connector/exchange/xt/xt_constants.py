@@ -25,6 +25,7 @@ SERVER_TIME_PATH_URL = "/v4/public/time"
 ACCOUNTS_PATH_URL = "/v4/balances"
 MY_TRADES_PATH_URL = "/v4/trade"
 ORDER_PATH_URL = "/v4/order"
+CANCEL_ORDER_PATH_URL = "/v4/order/"
 # BINANCE_USER_STREAM_PATH_URL = "/userDataStream"
 
 XT_VALIDATE_ALGORITHMS = "HmacSHA256"
