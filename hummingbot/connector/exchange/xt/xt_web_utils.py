@@ -13,7 +13,7 @@ def public_rest_url(path_url: str, domain: str = CONSTANTS.DEFAULT_DOMAIN) -> st
     """
     Creates a full URL for provided public REST endpoint
     :param path_url: a public REST endpoint
-    :param domain: the XT domain to connect to "com". The default value is "com"
+    :param domain: the Xt domain to connect to ("com" or "us"). The default value is "com"
     :return: the full URL to the endpoint
     """
     return CONSTANTS.REST_URL.format(domain) + CONSTANTS.PUBLIC_API_VERSION + path_url
@@ -23,34 +23,30 @@ def private_rest_url(path_url: str, domain: str = CONSTANTS.DEFAULT_DOMAIN) -> s
     """
     Creates a full URL for provided private REST endpoint
     :param path_url: a private REST endpoint
-    :param domain: the XT domain to connect to ("com" or "us"). The default value is "com"
+    :param domain: the Xt domain to connect to ("com" or "us"). The default value is "com"
     :return: the full URL to the endpoint
     """
     return CONSTANTS.REST_URL.format(domain) + CONSTANTS.PRIVATE_API_VERSION + path_url
 
 
 def build_api_factory(
-    throttler: Optional[AsyncThrottler] = None,
-    time_synchronizer: Optional[TimeSynchronizer] = None,
-    domain: str = CONSTANTS.DEFAULT_DOMAIN,
-    time_provider: Optional[Callable] = None,
-    auth: Optional[AuthBase] = None,
-) -> WebAssistantsFactory:
+        throttler: Optional[AsyncThrottler] = None,
+        time_synchronizer: Optional[TimeSynchronizer] = None,
+        domain: str = CONSTANTS.DEFAULT_DOMAIN,
+        time_provider: Optional[Callable] = None,
+        auth: Optional[AuthBase] = None, ) -> WebAssistantsFactory:
     throttler = throttler or create_throttler()
     time_synchronizer = time_synchronizer or TimeSynchronizer()
-    time_provider = time_provider or (
-        lambda: get_current_server_time(
-            throttler=throttler,
-            domain=domain,
-        )
-    )
+    time_provider = time_provider or (lambda: get_current_server_time(
+        throttler=throttler,
+        domain=domain,
+    ))
     api_factory = WebAssistantsFactory(
         throttler=throttler,
         auth=auth,
         rest_pre_processors=[
             TimeSynchronizerRESTPreProcessor(synchronizer=time_synchronizer, time_provider=time_provider),
-        ],
-    )
+        ])
     return api_factory
 
 
@@ -64,8 +60,8 @@ def create_throttler() -> AsyncThrottler:
 
 
 async def get_current_server_time(
-    throttler: Optional[AsyncThrottler] = None,
-    domain: str = CONSTANTS.DEFAULT_DOMAIN,
+        throttler: Optional[AsyncThrottler] = None,
+        domain: str = CONSTANTS.DEFAULT_DOMAIN,
 ) -> float:
     throttler = throttler or create_throttler()
     api_factory = build_api_factory_without_time_synchronizer_pre_processor(throttler=throttler)
@@ -75,5 +71,5 @@ async def get_current_server_time(
         method=RESTMethod.GET,
         throttler_limit_id=CONSTANTS.SERVER_TIME_PATH_URL,
     )
-    server_time = response["result"]["serverTime"]
+    server_time = response["serverTime"]
     return server_time
