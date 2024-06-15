@@ -22,17 +22,11 @@ SNAPSHOT_PATH_URL = "/v4/public/depth"
 SERVER_TIME_PATH_URL = "/v4/public/time"
 
 # Private API endpoints or XtClient function
-ACCOUNTS_PATH_URL = "/v4/balances"
+ACCOUNTS_PATH_URL = "/v4/balances?currencies=usdt,btc"
 MY_TRADES_PATH_URL = "/v4/trade"
 ORDER_PATH_URL = "/v4/order"
 CANCEL_ORDER_PATH_URL = "/v4/order/"
 # BINANCE_USER_STREAM_PATH_URL = "/userDataStream"
-
-XT_VALIDATE_ALGORITHMS = "HmacSHA256"
-XT_VALIDATE_RECVWINDOW = "5000"
-XT_VALIDATE_CONTENTTYPE_URLENCODE = "application/x-www-form-urlencoded"
-XT_VALIDATE_CONTENTTYPE_JSON = "application/json;charset=UTF-8"
-
 
 WS_HEARTBEAT_TIME_INTERVAL = 45
 GET_ACCOUNT_LISTENKEY = "/v4/ws-token"
@@ -46,6 +40,10 @@ TIME_IN_FORCE_GTC = "GTC"  # Good till cancelled
 TIME_IN_FORCE_IOC = "IOC"  # Immediate or cancel
 TIME_IN_FORCE_FOK = "FOK"  # Fill or kill
 
+XT_VALIDATE_ALGORITHMS = "HmacSHA256"
+XT_VALIDATE_RECVWINDOW = "6000"
+XT_VALIDATE_CONTENTTYPE_URLENCODE = "application/x-www-form-urlencoded"
+XT_VALIDATE_CONTENTTYPE_JSON = "application/json"
 
 # Rate Limit Type
 REQUEST_WEIGHT = "REQUEST_WEIGHT"
@@ -121,3 +119,7 @@ ORDER_NOT_EXIST_ERROR_CODE = "ORDER_005"
 ORDER_NOT_EXIST_MESSAGE = "Order does not exist"
 # UNKNOWN_ORDER_ERROR_CODE = -2011
 # UNKNOWN_ORDER_MESSAGE = "Unknown order sent"
+
+
+# 7e5a8d31-1641-4f8b-8a6a-40ee822b6a82
+# bd46497d2d9f68ad87fe7a7116deb0c74f1a8e79
