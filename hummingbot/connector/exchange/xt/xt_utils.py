@@ -7,11 +7,11 @@ from hummingbot.client.config.config_data_types import BaseConnectorConfigMap, C
 from hummingbot.core.data_type.trade_fee import TradeFeeSchema
 
 CENTRALIZED = True
-EXAMPLE_PAIR = "ZRX-ETH"
+EXAMPLE_PAIR = "BTC-ETH"
 
 DEFAULT_FEES = TradeFeeSchema(
-    maker_percent_fee_decimal=Decimal("0.001"),
-    taker_percent_fee_decimal=Decimal("0.001"),
+    maker_percent_fee_decimal=Decimal("0.002"),
+    taker_percent_fee_decimal=Decimal("0.002"),
     buy_percent_fee_deducted_from_returns=True
 )
 
@@ -65,35 +65,35 @@ class XtConfigMap(BaseConnectorConfigMap):
 
 KEYS = XtConfigMap.construct()
 
-OTHER_DOMAINS = ["xt_us"]
-OTHER_DOMAINS_PARAMETER = {"xt_us": "us"}
-OTHER_DOMAINS_EXAMPLE_PAIR = {"xt_us": "BTC-USDT"}
-OTHER_DOMAINS_DEFAULT_FEES = {"xt_us": DEFAULT_FEES}
+# OTHER_DOMAINS = ["xt_us"]
+# OTHER_DOMAINS_PARAMETER = {"xt_us": "us"}
+# OTHER_DOMAINS_EXAMPLE_PAIR = {"xt_us": "BTC-USDT"}
+# OTHER_DOMAINS_DEFAULT_FEES = {"xt_us": DEFAULT_FEES}
 
 
-class XtUSConfigMap(BaseConnectorConfigMap):
-    connector: str = Field(default="xt_us", const=True, client_data=None)
-    xt_api_key: SecretStr = Field(
-        default=...,
-        client_data=ClientFieldData(
-            prompt=lambda cm: "Enter your Xt US API key",
-            is_secure=True,
-            is_connect_key=True,
-            prompt_on_new=True,
-        )
-    )
-    xt_api_secret: SecretStr = Field(
-        default=...,
-        client_data=ClientFieldData(
-            prompt=lambda cm: "Enter your Xt US API secret",
-            is_secure=True,
-            is_connect_key=True,
-            prompt_on_new=True,
-        )
-    )
+# class XtUSConfigMap(BaseConnectorConfigMap):
+#     connector: str = Field(default="xt_us", const=True, client_data=None)
+#     xt_api_key: SecretStr = Field(
+#         default=...,
+#         client_data=ClientFieldData(
+#             prompt=lambda cm: "Enter your Xt US API key",
+#             is_secure=True,
+#             is_connect_key=True,
+#             prompt_on_new=True,
+#         )
+#     )
+#     xt_api_secret: SecretStr = Field(
+#         default=...,
+#         client_data=ClientFieldData(
+#             prompt=lambda cm: "Enter your Xt US API secret",
+#             is_secure=True,
+#             is_connect_key=True,
+#             prompt_on_new=True,
+#         )
+#     )
 
-    class Config:
-        title = "xt_us"
+#     class Config:
+#         title = "xt_us"
 
 
-OTHER_DOMAINS_KEYS = {"xt_us": XtUSConfigMap.construct()}
+# OTHER_DOMAINS_KEYS = {"xt_us": XtUSConfigMap.construct()}
