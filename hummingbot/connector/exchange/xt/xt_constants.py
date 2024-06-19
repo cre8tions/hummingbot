@@ -10,26 +10,26 @@ MAX_ORDER_ID_LEN = 32
 REST_URL = "https://sapi.xt.com"
 WSS_URL = "wss://stream.xt.com/public"
 
-PUBLIC_API_VERSION = "v4"
-PRIVATE_API_VERSION = "v4"
+PUBLIC_API_VERSION = "/v4"
+PRIVATE_API_VERSION = "/v4"
 
 # Public API endpoints or XtClient function
-TICKER_PRICE_CHANGE_PATH_URL = "/v4/public/ticker/24h"
-TICKER_BOOK_PATH_URL = "/v4/public/ticker/book"
-EXCHANGE_INFO_PATH_URL = "/v4/public/symbol"
+TICKER_PRICE_CHANGE_PATH_URL = "/public/ticker/24h"
+TICKER_BOOK_PATH_URL = "/public/ticker/book"
+EXCHANGE_INFO_PATH_URL = "/public/symbol"
 PING_PATH_URL = "/ping"
-SNAPSHOT_PATH_URL = "/v4/public/depth"
-SERVER_TIME_PATH_URL = "/v4/public/time"
+SNAPSHOT_PATH_URL = "/public/depth"
+SERVER_TIME_PATH_URL = "/public/time"
 
 # Private API endpoints or XtClient function
-ACCOUNTS_PATH_URL = "/v4/balances?currencies=usdt"
-MY_TRADES_PATH_URL = "/v4/trade"
-ORDER_PATH_URL = "/v4/order"
-CANCEL_ORDER_PATH_URL = "/v4/order/"
+ACCOUNTS_PATH_URL = "/balances"
+MY_TRADES_PATH_URL = "/trade"
+ORDER_PATH_URL = "/order"
+CANCEL_ORDER_PATH_URL = "/order/"
 # BINANCE_USER_STREAM_PATH_URL = "/userDataStream"
 
 WS_HEARTBEAT_TIME_INTERVAL = 45
-GET_ACCOUNT_LISTENKEY = "/v4/ws-token"
+GET_ACCOUNT_LISTENKEY = "/ws-token"
 
 # Xt params
 

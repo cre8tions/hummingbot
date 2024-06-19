@@ -22,22 +22,19 @@ class XtAuth(AuthBase):
         the required parameter in the request header.
         :param request: the request to be configured for authenticated interaction
         """
-        if request.method in (RESTMethod.GET, RESTMethod.DELETE, RESTMethod.POST):
+        if request.method in (RESTMethod.GET, RESTMethod.DELETE):
             params_str = (
                 urlencode(dict(sorted(request.params.items(), key=lambda kv: (kv[0], kv[1]))), safe=",")
                 if request.params is not None
                 else request.params
             )
             headers = self.add_auth_to_headers(method=request.method, path=request.url, params_str=params_str)
-
-        # if request.method == RESTMethod.POST:
-        #     request.data = self.add_auth_to_params(params=json.loads(request.data))
-        # else:
-        #     request.params = self.add_auth_to_params(params=request.params)
+        else:
+            headers = self.add_auth_to_headers(method=request.method, path=request.url, params_str=request.data)
 
         # headers = {}
-        if request.headers is not None:
-            headers.update(request.headers)
+        # if request.headers is not None:
+        #     headers.update(request.headers)
         # headers.update(self.header_for_authentication())
         request.headers = headers
 
@@ -82,9 +79,7 @@ class XtAuth(AuthBase):
         return headers
 
     def _generate_signature(self, encoded_params_str: str) -> str:
-
-        digest = hmac.new(self.secret_key.encode("utf8"), encoded_params_str.encode("utf8"), hashlib.sha256).hexdigest()
-        return digest
+        return hmac.new(self.secret_key.encode("utf8"), encoded_params_str.encode("utf8"), hashlib.sha256).hexdigest()
 
     # def add_auth_to_params(self,
     #                        params: Dict[str, Any]):
