@@ -52,9 +52,9 @@ class XtAuth(AuthBase):
         X = urlencode(dict(sorted(headers.items(), key=lambda kv: (kv[0], kv[1]))))
 
         if params_str is None:
-            Y = "#{}#{}".format(method.value, path)
+            Y = "#{}#{}".format(method.value, path.replace(CONSTANTS.REST_URL, ""))
         else:
-            Y = "#{}#{}#{}".format(method.value, path, params_str)
+            Y = "#{}#{}#{}".format(method.value, path.replace(CONSTANTS.REST_URL, ""), params_str)
 
         signature = self._generate_signature(X + Y)
         headers["xt-validate-signature"] = signature

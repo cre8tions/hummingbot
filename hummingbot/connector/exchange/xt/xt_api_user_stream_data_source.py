@@ -1,4 +1,5 @@
 import asyncio
+import time
 from typing import TYPE_CHECKING, Any, Dict, List, Optional
 
 from hummingbot.connector.exchange.xt import xt_constants as CONSTANTS, xt_web_utils as web_utils
@@ -35,7 +36,6 @@ class XtAPIUserStreamDataSource(UserStreamTrackerDataSource):
         self._current_listen_key = None
         self._domain = domain
         self._api_factory = api_factory
-
         self._listen_key_initialized_event: asyncio.Event = asyncio.Event()
         self._last_listen_key_ping_ts = 0
 
@@ -130,53 +130,53 @@ class XtAPIUserStreamDataSource(UserStreamTrackerDataSource):
 
         return data["result"]["accessToken"]
 
-    # async def _ping_listen_key(self) -> bool:
-    #     rest_assistant = await self._api_factory.get_rest_assistant()
-    #     try:
-    #         data = await rest_assistant.execute_request(
-    #             url=web_utils.public_rest_url(path_url=CONSTANTS.GET_ACCOUNT_LISTENKEY, domain=self._domain),
-    #             params={"listenKey": self._current_listen_key},
-    #             method=RESTMethod.PUT,
-    #             return_err=True,
-    #             throttler_limit_id=CONSTANTS.GET_ACCOUNT_LISTENKEY,
-    #             headers=self._auth.header_for_authentication(),
-    #         )
+    async def _ping_listen_key(self) -> bool:
+        rest_assistant = await self._api_factory.get_rest_assistant()
+        try:
+            data = await rest_assistant.execute_request(
+                url=web_utils.public_rest_url(path_url=CONSTANTS.GET_ACCOUNT_LISTENKEY),
+                params={"listenKey": self._current_listen_key},
+                method=RESTMethod.PUT,
+                return_err=True,
+                throttler_limit_id=CONSTANTS.GET_ACCOUNT_LISTENKEY,
+                headers=self._auth.header_for_authentication(),
+            )
 
-    #         if "code" in data:
-    #             self.logger().warning(f"Failed to refresh the listen key {self._current_listen_key}: {data}")
-    #             return False
+            if "code" in data:
+                self.logger().warning(f"Failed to refresh the listen key {self._current_listen_key}: {data}")
+                return False
 
-    #     except asyncio.CancelledError:
-    #         raise
-    #     except Exception as exception:
-    #         self.logger().warning(f"Failed to refresh the listen key {self._current_listen_key}: {exception}")
-    #         return False
+        except asyncio.CancelledError:
+            raise
+        except Exception as exception:
+            self.logger().warning(f"Failed to refresh the listen key {self._current_listen_key}: {exception}")
+            return False
 
-    #     return True
+        return True
 
-    # async def _manage_listen_key_task_loop(self):
-    #     try:
-    #         while True:
-    #             now = int(time.time())
-    #             if self._current_listen_key is None:
-    #                 self._current_listen_key = await self._get_listen_key()
-    #                 self.logger().info(f"Successfully obtained listen key {self._current_listen_key}")
-    #                 self._listen_key_initialized_event.set()
-    #                 self._last_listen_key_ping_ts = int(time.time())
+    async def _manage_listen_key_task_loop(self):
+        try:
+            while True:
+                now = int(time.time())
+                if self._current_listen_key is None:
+                    self._current_listen_key = await self._get_listen_key()
+                    self.logger().info(f"Successfully obtained listen key {self._current_listen_key}")
+                    self._listen_key_initialized_event.set()
+                    self._last_listen_key_ping_ts = int(time.time())
 
-    #             if now - self._last_listen_key_ping_ts >= self.LISTEN_KEY_KEEP_ALIVE_INTERVAL:
-    #                 success: bool = await self._ping_listen_key()
-    #                 if not success:
-    #                     self.logger().error("Error occurred renewing listen key ...")
-    #                     break
-    #                 else:
-    #                     self.logger().info(f"Refreshed listen key {self._current_listen_key}.")
-    #                     self._last_listen_key_ping_ts = int(time.time())
-    #             else:
-    #                 await self._sleep(self.LISTEN_KEY_KEEP_ALIVE_INTERVAL)
-    #     finally:
-    #         self._current_listen_key = None
-    #         self._listen_key_initialized_event.clear()
+                if now - self._last_listen_key_ping_ts >= self.LISTEN_KEY_KEEP_ALIVE_INTERVAL:
+                    success: bool = await self._ping_listen_key()
+                    if not success:
+                        self.logger().error("Error occurred renewing listen key ...")
+                        break
+                    else:
+                        self.logger().info(f"Refreshed listen key {self._current_listen_key}.")
+                        self._last_listen_key_ping_ts = int(time.time())
+                else:
+                    await self._sleep(self.LISTEN_KEY_KEEP_ALIVE_INTERVAL)
+        finally:
+            self._current_listen_key = None
+            self._listen_key_initialized_event.clear()
 
     async def _get_ws_assistant(self) -> WSAssistant:
         if self._ws_assistant is None:
@@ -185,7 +185,7 @@ class XtAPIUserStreamDataSource(UserStreamTrackerDataSource):
 
     async def _on_user_stream_interruption(self, websocket_assistant: Optional[WSAssistant]):
         await super()._on_user_stream_interruption(websocket_assistant=websocket_assistant)
-        # self._manage_listen_key_task and self._manage_listen_key_task.cancel()
+        self._manage_listen_key_task and self._manage_listen_key_task.cancel()
         self._current_listen_key = None
-        # self._listen_key_initialized_event.clear()
-        # await self._sleep(5)
+        self._listen_key_initialized_event.clear()
+        await self._sleep(5)

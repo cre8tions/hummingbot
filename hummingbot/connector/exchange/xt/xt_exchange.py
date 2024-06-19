@@ -47,7 +47,9 @@ class XtExchange(ExchangePyBase):
         self._domain = domain
         self._trading_required = trading_required
         self._trading_pairs = trading_pairs
+        self._exchange_market_info = {self._domain: {}}
         self._last_trades_poll_xt_timestamp = 1.0
+        self.get_all_pairs_prices()
         super().__init__(client_config_map)
 
     @staticmethod
@@ -108,6 +110,15 @@ class XtExchange(ExchangePyBase):
     @property
     def is_trading_required(self) -> bool:
         return self._trading_required
+
+    async def start_network(self):
+        await super().start_network()
+
+        market_symbols = [
+            await self.exchange_symbol_associated_to_pair(trading_pair=trading_pair)
+            for trading_pair in self._trading_pairs
+        ]
+        await self._data_source.start(market_symbols=market_symbols)
 
     def supported_order_types(self):
         return [OrderType.LIMIT, OrderType.LIMIT_MAKER, OrderType.MARKET]
@@ -627,6 +638,7 @@ class XtExchange(ExchangePyBase):
         }
 
         """
+
         local_asset_names = set(self._account_balances.keys())
         remote_asset_names = set()
 
@@ -635,11 +647,11 @@ class XtExchange(ExchangePyBase):
         if "result" not in account_info or account_info["result"] is None:
             raise IOError(f"Error fetching account updates. API response: {account_info}")
 
-        balances = account_info["balances"]
-        for balance_entry in balances:
-            asset_name = balance_entry["asset"]
-            free_balance = Decimal(balance_entry["free"])
-            total_balance = Decimal(balance_entry["free"]) + Decimal(balance_entry["locked"])
+        balances = account_info["result"]
+        for balance_entry in balances["assets"]:
+            asset_name = balance_entry["currency"]
+            free_balance = Decimal(balance_entry["availableAmount"])
+            total_balance = Decimal(balance_entry["totalAmount"])
             self._account_available_balances[asset_name] = free_balance
             self._account_balances[asset_name] = total_balance
             remote_asset_names.add(asset_name)
