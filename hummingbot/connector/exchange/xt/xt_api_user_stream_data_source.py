@@ -74,7 +74,7 @@ class XtAPIUserStreamDataSource(UserStreamTrackerDataSource):
 
         ws: WSAssistant = await self._get_ws_assistant()
         # url = f"{CONSTANTS.WSS_URL.format(self._domain)}/{self._current_listen_key}"
-        url = f"{CONSTANTS.WSS_URL_PRIVATE.format(self._domain)}"
+        url = f"{CONSTANTS.WSS_URL_PRIVATE}/{self._current_listen_key}"
         await ws.connect(ws_url=url, ping_timeout=CONSTANTS.WS_HEARTBEAT_TIME_INTERVAL)
         return ws
 
@@ -120,7 +120,7 @@ class XtAPIUserStreamDataSource(UserStreamTrackerDataSource):
                 method=RESTMethod.POST,
                 throttler_limit_id=CONSTANTS.GET_ACCOUNT_LISTENKEY,
                 headers=self._auth.add_auth_to_headers(
-                    RESTMethod.POST, f"/{CONSTANTS.PUBLIC_API_VERSION}{CONSTANTS.GET_ACCOUNT_LISTENKEY}"
+                    RESTMethod.POST, f"/{CONSTANTS.GET_ACCOUNT_LISTENKEY}"
                 ),
             )
         except asyncio.CancelledError:

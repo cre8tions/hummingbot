@@ -64,10 +64,10 @@ class XtExchange(ExchangePyBase):
 
     @property
     def name(self) -> str:
-        if self._domain == "com":
-            return "xt"
+        if self._domain == "sapi.xt.com":
+            return "sapi.xt.com"
         else:
-            return f"xt_{self._domain}"
+            return "sapi.xt.com"
 
     @property
     def rate_limits_rules(self):
@@ -651,9 +651,9 @@ class XtExchange(ExchangePyBase):
 
     def _initialize_trading_pair_symbols_from_exchange_info(self, exchange_info: Dict[str, Any]):
         mapping = bidict()
-        for symbol_data in filter(xt_utils.is_exchange_information_valid, exchange_info["symbols"]):
+        for symbol_data in filter(xt_utils.is_exchange_information_valid, exchange_info["result"]["symbols"]):
             mapping[symbol_data["symbol"]] = combine_to_hb_trading_pair(
-                base=symbol_data["baseAsset"], quote=symbol_data["quoteAsset"]
+                base=symbol_data["baseCurrency"], quote=symbol_data["quoteCurrency"]
             )
         self._set_trading_pair_symbol_map(mapping)
 

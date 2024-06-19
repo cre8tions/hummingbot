@@ -7,7 +7,7 @@ from hummingbot.client.config.config_data_types import BaseConnectorConfigMap, C
 from hummingbot.core.data_type.trade_fee import TradeFeeSchema
 
 CENTRALIZED = True
-EXAMPLE_PAIR = "BTC-ETH"
+EXAMPLE_PAIR = "BTC-USDT"
 
 DEFAULT_FEES = TradeFeeSchema(
     maker_percent_fee_decimal=Decimal("0.002"),
@@ -25,15 +25,11 @@ def is_exchange_information_valid(exchange_info: Dict[str, Any]) -> bool:
     is_spot = False
     is_trading = False
 
-    if exchange_info.get("status", None) == "TRADING":
+    if exchange_info.get("state", None) == "ONLINE":
         is_trading = True
 
-    permissions_sets = exchange_info.get("permissionSets", list())
-    for permission_set in permissions_sets:
-        # PermissionSet is a list, find if in this list we have "SPOT" value or not
-        if "SPOT" in permission_set:
-            is_spot = True
-            break
+    if exchange_info.get("tradingEnabled", None) is True:
+        is_spot = True
 
     return is_trading and is_spot
 
