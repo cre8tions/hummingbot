@@ -5,6 +5,7 @@ DEFAULT_DOMAIN = "sapi.xt.com"
 
 HBOT_ORDER_ID_PREFIX = "x-XEKWYICX"
 MAX_ORDER_ID_LEN = 32
+MAX_ID_BIT_COUNT = 31
 
 # Base URL
 REST_URL = "https://sapi.xt.com"
@@ -14,9 +15,10 @@ PUBLIC_API_VERSION = "/v4"
 PRIVATE_API_VERSION = "/v4"
 
 # Public API endpoints or XtClient function
+GET_ACTIVE_MARKETS = PUBLIC_API_VERSION + "/public/symbol"
 TICKER_PRICE_CHANGE_PATH_URL = PUBLIC_API_VERSION + "/public/ticker/24h"
 TICKER_BOOK_PATH_URL = PUBLIC_API_VERSION + "/public/ticker/book"
-EXCHANGE_INFO_PATH_URL = PUBLIC_API_VERSION + "/public/ticker"
+EXCHANGE_INFO_PATH_URL = PUBLIC_API_VERSION + "/public/symbol"
 PING_PATH_URL = "/ping"
 SNAPSHOT_PATH_URL = PUBLIC_API_VERSION + "/public/depth"
 SERVER_TIME_PATH_URL = PUBLIC_API_VERSION + "/public/time"

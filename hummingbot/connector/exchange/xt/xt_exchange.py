@@ -12,13 +12,14 @@ from hummingbot.connector.exchange.xt.xt_api_user_stream_data_source import XtAP
 from hummingbot.connector.exchange.xt.xt_auth import XtAuth
 from hummingbot.connector.exchange_py_base import ExchangePyBase
 from hummingbot.connector.trading_rule import TradingRule
-from hummingbot.connector.utils import combine_to_hb_trading_pair
+from hummingbot.connector.utils import combine_to_hb_trading_pair, get_new_numeric_client_order_id
 from hummingbot.core.data_type.common import OrderType, TradeType
 from hummingbot.core.data_type.in_flight_order import InFlightOrder, OrderState, OrderUpdate, TradeUpdate
 from hummingbot.core.data_type.order_book_tracker_data_source import OrderBookTrackerDataSource
-from hummingbot.core.data_type.trade_fee import DeductedFromReturnsTradeFee, TokenAmount, TradeFeeBase
+from hummingbot.core.data_type.trade_fee import TokenAmount, TradeFeeBase
 from hummingbot.core.data_type.user_stream_tracker_data_source import UserStreamTrackerDataSource
-from hummingbot.core.utils.async_utils import safe_gather
+from hummingbot.core.utils.async_utils import safe_ensure_future, safe_gather
+from hummingbot.core.utils.estimate_fee import build_trade_fee
 from hummingbot.core.web_assistant.connections.data_types import RESTMethod
 from hummingbot.core.web_assistant.web_assistants_factory import WebAssistantsFactory
 
@@ -49,7 +50,8 @@ class XtExchange(ExchangePyBase):
         self._trading_pairs = trading_pairs
         self._exchange_market_info = {self._domain: {}}
         self._last_trades_poll_xt_timestamp = 1.0
-        self.get_all_pairs_prices()
+        self._client_config = client_config_map
+        # self.get_all_pairs_prices()
         super().__init__(client_config_map)
 
     @staticmethod
@@ -66,10 +68,7 @@ class XtExchange(ExchangePyBase):
 
     @property
     def name(self) -> str:
-        if self._domain == "sapi.xt.com":
-            return "sapi.xt.com"
-        else:
-            return "sapi.xt.com"
+        return "xt"
 
     @property
     def rate_limits_rules(self):
@@ -112,8 +111,6 @@ class XtExchange(ExchangePyBase):
         return self._trading_required
 
     async def start_network(self):
-        await super().start_network()
-
         market_symbols = [
             await self.exchange_symbol_associated_to_pair(trading_pair=trading_pair)
             for trading_pair in self._trading_pairs
@@ -138,15 +135,15 @@ class XtExchange(ExchangePyBase):
         return is_time_synchronizer_related
 
     def _is_order_not_found_during_status_update_error(self, status_update_exception: Exception) -> bool:
-        # return str(CONSTANTS.ORDER_NOT_EXIST_ERROR_CODE) in str(
-        #     status_update_exception
-        # ) and CONSTANTS.ORDER_NOT_EXIST_MESSAGE in str(status_update_exception)
+        return str(CONSTANTS.ORDER_NOT_EXIST_ERROR_CODE) in str(
+            status_update_exception
+        ) and CONSTANTS.ORDER_NOT_EXIST_MESSAGE in str(status_update_exception)
         pass
 
     def _is_order_not_found_during_cancelation_error(self, cancelation_exception: Exception) -> bool:
-        # return str(CONSTANTS.UNKNOWN_ORDER_ERROR_CODE) in str(
-        #     cancelation_exception
-        # ) and CONSTANTS.UNKNOWN_ORDER_MESSAGE in str(cancelation_exception)
+        return str(CONSTANTS.UNKNOWN_ORDER_ERROR_CODE) in str(
+            cancelation_exception
+        ) and CONSTANTS.UNKNOWN_ORDER_MESSAGE in str(cancelation_exception)
         pass
 
     def _create_web_assistants_factory(self) -> WebAssistantsFactory:
@@ -182,7 +179,27 @@ class XtExchange(ExchangePyBase):
         is_maker: Optional[bool] = None,
     ) -> TradeFeeBase:
         is_maker = order_type is OrderType.LIMIT_MAKER
-        return DeductedFromReturnsTradeFee(percent=self.estimate_fee_pct(is_maker))
+        trade_base_fee = build_trade_fee(
+            exchange=self.name,
+            is_maker=is_maker,
+            order_side=order_side,
+            order_type=order_type,
+            amount=amount,
+            price=price,
+            base_currency=base_currency,
+            quote_currency=quote_currency
+        )
+        return trade_base_fee
+
+        # return DeductedFromReturnsTradeFee(percent=self.estimate_fee_pct(is_maker))
+
+    async def get_asset_pairs(self) -> Dict[str, Any]:
+        if not self._asset_pairs:
+            asset_pairs = await self._api_request_with_retry(method=RESTMethod.GET,
+                                                             path_url=CONSTANTS.ASSET_PAIRS_PATH_URL)
+            self._asset_pairs = {f"{details['base']}-{details['quote']}": details
+                                 for _, details in asset_pairs.items() if web_utils.is_exchange_information_valid(details)}
+        return self._asset_pairs
 
     async def _place_order(
         self,
@@ -707,3 +724,59 @@ class XtExchange(ExchangePyBase):
                     open_orders.append(order["clientOrderId"])
 
         return open_orders
+
+    def buy(self,
+            trading_pair: str,
+            amount: Decimal,
+            order_type=OrderType.LIMIT,
+            price: Decimal = s_decimal_NaN,
+            **kwargs) -> str:
+        """
+        Creates a promise to create a buy order using the parameters
+
+        :param trading_pair: the token pair to operate with
+        :param amount: the order amount
+        :param order_type: the type of order to create (MARKET, LIMIT, LIMIT_MAKER)
+        :param price: the order price
+
+        :return: the id assigned by the connector to the order (the client id)
+        """
+        order_id = str(get_new_numeric_client_order_id(
+            nonce_creator=self._client_order_id_nonce_provider,
+            max_id_bit_count=CONSTANTS.MAX_ID_BIT_COUNT,
+        ))
+        safe_ensure_future(self._create_order(
+            trade_type=TradeType.BUY,
+            order_id=order_id,
+            trading_pair=trading_pair,
+            amount=amount,
+            order_type=order_type,
+            price=price))
+        return order_id
+
+    def sell(self,
+             trading_pair: str,
+             amount: Decimal,
+             order_type: OrderType = OrderType.LIMIT,
+             price: Decimal = s_decimal_NaN,
+             **kwargs) -> str:
+        """
+        Creates a promise to create a sell order using the parameters.
+        :param trading_pair: the token pair to operate with
+        :param amount: the order amount
+        :param order_type: the type of order to create (MARKET, LIMIT, LIMIT_MAKER)
+        :param price: the order price
+        :return: the id assigned by the connector to the order (the client id)
+        """
+        order_id = str(get_new_numeric_client_order_id(
+            nonce_creator=self._client_order_id_nonce_provider,
+            max_id_bit_count=CONSTANTS.MAX_ID_BIT_COUNT,
+        ))
+        safe_ensure_future(self._create_order(
+            trade_type=TradeType.SELL,
+            order_id=order_id,
+            trading_pair=trading_pair,
+            amount=amount,
+            order_type=order_type,
+            price=price))
+        return order_id

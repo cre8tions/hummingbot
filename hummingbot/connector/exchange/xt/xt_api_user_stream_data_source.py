@@ -36,6 +36,7 @@ class XtAPIUserStreamDataSource(UserStreamTrackerDataSource):
         self._current_listen_key = None
         self._domain = domain
         self._api_factory = api_factory
+        self._connector = connector
         self._listen_key_initialized_event: asyncio.Event = asyncio.Event()
         self._last_listen_key_ping_ts = 0
 
