@@ -24,7 +24,7 @@ class SimpleOrder(ScriptStrategyBase):
 
     # Key Parameters
     order_amount_usd = Decimal(25)
-    exchange = "kraken"
+    exchange = "xt"
     base = "SOL"
     quote = "USDT"
     side = "buy"
